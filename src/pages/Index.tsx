@@ -14,6 +14,7 @@ import RelatoriosManagement from '@/components/RelatoriosManagement';
 import CamposManagement from '@/components/CamposManagement';
 import SettingsManagement from '@/components/SettingsManagement';
 import WhatsAppSimulator from '@/components/WhatsAppSimulator';
+import AuthScreen from '@/components/AuthScreen';
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { Menu } from 'lucide-react';
 import { showSuccess } from '@/utils/toast';
@@ -78,6 +79,12 @@ const INITIAL_SALES = [
 export default function Index() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Auth State
+  const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(() => {
+    const saved = localStorage.getItem('ga_current_user');
+    return saved ? JSON.parse(saved) : null;
+  });
 
   // State initialization with localStorage persistence
   const [fields, setFields] = useState(() => {
@@ -181,6 +188,13 @@ export default function Index() {
   useEffect(() => {
     localStorage.setItem('ga_sales', JSON.stringify(sales));
   }, [sales]);
+
+  // Logout Handler
+  const handleLogout = () => {
+    localStorage.removeItem('ga_current_user');
+    setCurrentUser(null);
+    showSuccess("Você saiu da sua conta.");
+  };
 
   // Reset All Data Handler
   const handleResetAllData = () => {
@@ -404,6 +418,11 @@ export default function Index() {
     setSettings(newSettings);
   };
 
+  // If user is not logged in, show the Auth Screen
+  if (!currentUser) {
+    return <AuthScreen onLoginSuccess={(user) => setCurrentUser(user)} />;
+  }
+
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-100 relative">
       {/* Sidebar - Collapsible on Mobile */}
@@ -414,6 +433,8 @@ export default function Index() {
             setActiveTab(tab);
             setIsSidebarOpen(false);
           }} 
+          onLogout={handleLogout}
+          currentUser={currentUser}
         />
       </div>
 
