@@ -11,7 +11,8 @@ import {
   DollarSign, 
   User, 
   Activity,
-  Search
+  Search,
+  Users
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,14 @@ export default function BookingCalendar({
     if (field) {
       setSelectedSport(field.sport);
       setPrice(field.pricePerHour.toString());
+    }
+  };
+
+  const handleSelectExistingCustomer = (customerId: string) => {
+    const customer = customers.find(c => c.id === customerId);
+    if (customer) {
+      setCustomerName(customer.name);
+      setCustomerPhone(customer.phone);
     }
   };
 
@@ -283,6 +292,28 @@ export default function BookingCalendar({
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {/* Quick Select Existing Customer */}
+              <div className="space-y-1">
+                <Label className="text-slate-700 font-semibold flex items-center gap-1.5">
+                  <Users size={16} className="text-emerald-600" />
+                  Selecionar Cliente Cadastrado
+                </Label>
+                <Select onValueChange={handleSelectExistingCustomer}>
+                  <SelectTrigger className="rounded-xl border-slate-200">
+                    <SelectValue placeholder="Escolha um cliente existente (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customers.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name} ({c.phone})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="border-t border-slate-100 my-2 pt-2" />
+
               <div className="space-y-1">
                 <Label htmlFor="customerName" className="text-slate-700 font-semibold">Nome do Cliente *</Label>
                 <Input
