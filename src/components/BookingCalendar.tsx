@@ -33,11 +33,13 @@ interface BookingCalendarProps {
   onUnblockSlot: (id: string) => void;
 }
 
+// Half-hour slots for broken hours support
 const TIME_SLOTS = [
   "08:00 - 09:00", "09:00 - 10:00", "10:00 - 11:00", "11:00 - 12:00",
   "12:00 - 13:00", "13:00 - 14:00", "14:00 - 15:00", "15:00 - 16:00",
-  "16:00 - 17:00", "17:00 - 18:00", "18:00 - 19:00", "19:00 - 20:00",
-  "20:00 - 21:00", "21:00 - 22:00", "22:00 - 23:00"
+  "16:00 - 17:00", "17:00 - 18:00", "18:00 - 19:00", "18:30 - 19:30",
+  "19:00 - 20:00", "19:30 - 20:30", "20:00 - 21:00", "21:00 - 22:00",
+  "22:00 - 23:00"
 ];
 
 export default function BookingCalendar({ 
@@ -80,10 +82,30 @@ export default function BookingCalendar({
     b => b.date === selectedDate && b.fieldId === selectedFieldId
   );
 
-  // Filter mensalistas for selected day of week and field
-  const activeMensalistas = mensalistas.filter(
-    m => m.active && m.fieldId === selectedFieldId && m.dayOfWeek === selectedDayOfWeek
-  );
+  // Filter mensalistas for selected day of week and field, respecting recurrence
+  const activeMensalistas = mensalistas.filter(m => {
+    if (!m.active || m.fieldId !== selectedFieldId || m.dayOfWeek !== selectedDayOfWeek) {
+      return false;
+    }
+
+    // Recurrence logic
+    if (m.recurrence === 'biweekly') {
+      // Check if the week number of the year is even/odd to alternate weeks
+      const dateObj = new Date(selectedDate + 'T00:00:00');
+      const oneJan = new Date(dateObj.getFullYear(), 0, 1);
+      const numberOfDays = Math.floor((dateObj.getTime() - oneJan.getTime()) / (24 * 60 * 60 * 1000));
+      const weekNumber = Math.ceil((dateObj.getDay() + 1 + numberOfDays) / 7);
+      return weekNumber % 2 === 0;
+    }
+
+    if (m.recurrence === 'monthly_3x') {
+      // Only show in the first 3 weeks of the month (day of month <= 21)
+      const dayOfMonth = new Date(selectedDate + 'T00:00:00').getDate();
+      return dayOfMonth <= 21;
+    }
+
+    return true; // weekly or custom defaults to true
+  });
 
   // Filter events for selected date and field
   const activeEventos = eventos.filter(
@@ -182,21 +204,21 @@ export default function BookingCalendar({
     <div className="space-y-6">
       {/* Header Controls */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm">
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="flex flex-col">
+        <div className="flex flex-wrap gap-3 items-center w-full sm:w-auto">
+          <div className="flex flex-col w-full sm:w-auto">
             <span className="text-xs font-semibold text-slate-400 mb-1">Data</span>
             <Input 
               type="date" 
               value={selectedDate} 
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-44 rounded-xl border-slate-800 bg-slate-950 text-white focus:ring-blue-500"
+              className="w-full sm:w-44 rounded-xl border-slate-800 bg-slate-950 text-white focus:ring-blue-500"
             />
           </div>
 
-          <div className="flex flex-col">
+          <div className="flex flex-col w-full sm:w-auto">
             <span className="text-xs font-semibold text-slate-400 mb-1">Quadra</span>
             <Select value={selectedFieldId} onValueChange={handleFieldChange}>
-              <SelectTrigger className="w-48 rounded-xl border-slate-800 bg-slate-950 text-white">
+              <SelectTrigger className="w-full sm:w-48 rounded-xl border-slate-800 bg-slate-950 text-white">
                 <SelectValue placeholder="Selecione a quadra" />
               </SelectTrigger>
               <SelectContent className="bg-slate-950 border-slate-800 text-white">
@@ -208,13 +230,13 @@ export default function BookingCalendar({
           </div>
         </div>
 
-        <div className="flex gap-2 self-end sm:self-auto">
+        <div className="flex gap-2 w-full sm:w-auto justify-end">
           <Button 
             onClick={() => setIsBlockModalOpen(true)}
             variant="outline"
-            className="border-rose-900 text-rose-400 hover:bg-rose-950/30 rounded-xl px-4 py-2.5 flex items-center gap-2"
+            className="border-rose-900 text-rose-400 hover:bg-rose-950/30 rounded-xl px-4 py-2.5 flex items-center gap-2 text-xs sm:text-sm"
           >
-            <Lock size={18} />
+            <Lock size={16} />
             Bloquear Horário
           </Button>
           <Button 
@@ -222,9 +244,9 @@ export default function BookingCalendar({
               setBookingDate(selectedDate);
               setIsNewBookingOpen(true);
             }}
-            className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2.5 flex items-center gap-2 font-bold"
+            className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2.5 flex items-center gap-2 font-bold text-xs sm:text-sm"
           >
-            <Plus size={18} />
+            <Plus size={16} />
             Novo Agendamento
           </Button>
         </div>
@@ -259,10 +281,8 @@ export default function BookingCalendar({
 
               // 2. Check if slot has a Diarista booking (including custom/broken hours)
               const booking = filteredBookings.find(b => {
-                // Check if booking timeSlot matches exactly or overlaps
                 if (b.timeSlot === slot) return true;
                 
-                // Overlap check for custom/broken hours
                 try {
                   const [slotStart, slotEnd] = slot.split(' - ');
                   const [bStart, bEnd] = b.timeSlot.split(' - ');
@@ -291,31 +311,31 @@ export default function BookingCalendar({
               });
 
               return (
-                <div key={slot} className="flex items-center justify-between p-4 hover:bg-slate-950/50 transition-colors">
+                <div key={slot} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-slate-950/50 transition-colors gap-2">
                   <div className="flex items-center gap-4">
                     <span className="text-sm font-semibold text-slate-300 w-28">{slot}</span>
                     
                     {block ? (
-                      <div className="flex items-center gap-2 text-rose-400 font-semibold">
+                      <div className="flex items-center gap-2 text-rose-400 font-semibold text-xs sm:text-sm">
                         <Lock size={14} />
                         <span>Bloqueado pelo Administrador {block.type === 'monthly' && '(Mensal/Anual)'}</span>
                       </div>
                     ) : event ? (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="inline-flex items-center rounded-full bg-amber-950 text-amber-400 border border-amber-900 px-2.5 py-0.5 text-xs font-semibold">
                           🏆 Evento: {event.title}
                         </span>
                         <span className="text-xs text-slate-400">({event.description || "Sem detalhes"})</span>
                       </div>
                     ) : mensalista ? (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="inline-flex items-center rounded-full bg-blue-950 text-blue-400 border border-blue-900 px-2.5 py-0.5 text-xs font-semibold">
                           👤 Mensalista: {mensalista.customerName}
                         </span>
                         <span className="text-xs text-slate-400">({mensalista.sport})</span>
                       </div>
                     ) : booking ? (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="inline-flex items-center rounded-full bg-emerald-950 text-emerald-400 border border-emerald-900 px-2.5 py-0.5 text-xs font-semibold">
                           ⚽ Diarista: {booking.customerName}
                         </span>
@@ -326,7 +346,7 @@ export default function BookingCalendar({
                     )}
                   </div>
 
-                  <div>
+                  <div className="self-end sm:self-auto">
                     {block ? (
                       <Button
                         size="sm"
@@ -335,7 +355,7 @@ export default function BookingCalendar({
                           onUnblockSlot(block.id);
                           showSuccess("Horário desbloqueado!");
                         }}
-                        className="text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 rounded-lg flex items-center gap-1"
+                        className="text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 rounded-lg flex items-center gap-1 text-xs"
                       >
                         <Unlock size={14} />
                         Desbloquear
@@ -351,7 +371,7 @@ export default function BookingCalendar({
                           setBookingDate(selectedDate);
                           setIsNewBookingOpen(true);
                         }}
-                        className="text-blue-400 hover:text-blue-300 hover:bg-blue-950/30 rounded-lg font-bold"
+                        className="text-blue-400 hover:text-blue-300 hover:bg-blue-950/30 rounded-lg font-bold text-xs"
                       >
                         Reservar
                       </Button>
@@ -478,8 +498,8 @@ export default function BookingCalendar({
       {/* New Booking Modal */}
       {isNewBookingOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="bg-gradient-to-r from-slate-950 to-slate-900 p-6 text-white flex justify-between items-center border-b border-slate-800">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
+            <div className="bg-gradient-to-r from-slate-950 to-slate-900 p-6 text-white flex justify-between items-center border-b border-slate-800 shrink-0">
               <div>
                 <h3 className="text-xl font-bold">Novo Agendamento</h3>
                 <p className="text-xs text-slate-400 mt-1">Preencha os dados para reservar a quadra</p>
@@ -492,7 +512,7 @@ export default function BookingCalendar({
               </button>
             </div>
 
-            <form onSubmit={handleSubmitBooking} className="p-6 space-y-4">
+            <form onSubmit={handleSubmitBooking} className="p-6 space-y-4 overflow-y-auto flex-1">
               {/* Quick Select Existing Customer */}
               <div className="space-y-1">
                 <Label className="text-slate-300 font-semibold flex items-center gap-1.5">
@@ -636,7 +656,7 @@ export default function BookingCalendar({
                 </div>
               </div>
 
-              <div className="pt-4 flex gap-3">
+              <div className="pt-4 flex gap-3 shrink-0">
                 <Button
                   type="button"
                   variant="outline"

@@ -1,7 +1,19 @@
 "use client";
 
 import React, { useState } from 'react';
-import { DollarSign, TrendingUp, Calendar, ArrowDownRight, ArrowUpRight, Filter, Download } from 'lucide-react';
+import { 
+  DollarSign, 
+  TrendingUp, 
+  Calendar, 
+  ArrowDownRight, 
+  ArrowUpRight, 
+  Filter, 
+  Download,
+  Utensils,
+  Users,
+  ShoppingBag,
+  Percent
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,13 +50,26 @@ export default function RelatoriosManagement({ bookings, transactions, sales, ac
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
 
+  // Fields Revenue (Aluguel de Quadra category)
+  const fieldsRevenue = filteredTransactions
+    .filter(t => t.category === 'Aluguel de Quadra' && t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  // Canteen Revenue (Bar / Lanchonete category)
+  const canteenRevenue = filteredTransactions
+    .filter(t => t.category === 'Bar / Lanchonete' && t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  // Other Revenue
+  const otherRevenue = totalIncome - fieldsRevenue - canteenRevenue;
+
   const netProfit = totalIncome - totalExpense;
 
-  const totalSales = filteredSales.reduce((sum, s) => sum + s.total, 0);
-
-  const totalPendingPayable = filteredAccountsPayable
-    .filter(a => a.status === 'pending')
-    .reduce((sum, a) => sum + a.amount, 0);
+  // Counts
+  const totalBookingsCount = filteredBookings.length;
+  const totalSalesCount = filteredSales.length;
+  const paidBookingsCount = filteredBookings.filter(b => b.paid).length;
+  const pendingBookingsCount = totalBookingsCount - paidBookingsCount;
 
   // Prepare chart data for selected range
   const getChartData = () => {
@@ -52,7 +77,6 @@ export default function RelatoriosManagement({ bookings, transactions, sales, ac
     const start = new Date(startDate + 'T00:00:00');
     const end = new Date(endDate + 'T00:00:00');
     
-    // Limit to max 30 days to avoid chart clutter
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
     const step = Math.max(1, Math.ceil(diffDays / 10));
@@ -108,7 +132,7 @@ export default function RelatoriosManagement({ bookings, transactions, sales, ac
     <div className="space-y-6">
       {/* Date Range Filter */}
       <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-end gap-4">
-        <div className="flex-1 grid grid-cols-2 gap-4">
+        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1">
             <Label className="text-slate-300 font-semibold">Data Início</Label>
             <Input
@@ -128,14 +152,14 @@ export default function RelatoriosManagement({ bookings, transactions, sales, ac
             />
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl px-6 py-2.5 flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+          <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl px-6 py-2.5 flex items-center justify-center gap-2 w-full sm:w-auto">
             <Filter size={18} />
             Filtrar Período
           </Button>
           <Button 
             onClick={handleExportExcel}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl px-6 py-2.5 flex items-center gap-2"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl px-6 py-2.5 flex items-center justify-center gap-2 w-full sm:w-auto"
           >
             <Download size={18} />
             Baixar Planilha
@@ -143,65 +167,124 @@ export default function RelatoriosManagement({ bookings, transactions, sales, ac
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      {/* Financial Summary Cards */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
         <Card className="border-slate-800 shadow-md bg-slate-900 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Faturamento Total</CardTitle>
+            <CardTitle className="text-xs font-medium text-slate-400">Faturamento Total</CardTitle>
             <div className="rounded-full bg-blue-950 p-2 text-blue-400 border border-blue-900">
               <DollarSign className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">R$ {totalIncome.toFixed(2)}</div>
-            <p className="text-xs text-slate-400 mt-1">Entradas no período</p>
+            <div className="text-xl font-bold text-white">R$ {totalIncome.toFixed(2)}</div>
+            <p className="text-[10px] text-slate-400 mt-1">Total de entradas</p>
           </CardContent>
         </Card>
 
         <Card className="border-slate-800 shadow-md bg-slate-900 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Despesas Totais</CardTitle>
+            <CardTitle className="text-xs font-medium text-slate-400">Faturamento Campos</CardTitle>
+            <div className="rounded-full bg-emerald-950 p-2 text-emerald-400 border border-emerald-900">
+              <Calendar className="h-4 w-4" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold text-emerald-400">R$ {fieldsRevenue.toFixed(2)}</div>
+            <p className="text-[10px] text-slate-400 mt-1">Locações de quadras</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-800 shadow-md bg-slate-900 text-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs font-medium text-slate-400">Faturamento Cantina</CardTitle>
+            <div className="rounded-full bg-amber-950 p-2 text-amber-400 border border-amber-900">
+              <Utensils className="h-4 w-4" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold text-amber-400">R$ {canteenRevenue.toFixed(2)}</div>
+            <p className="text-[10px] text-slate-400 mt-1">Vendas de produtos</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-800 shadow-md bg-slate-900 text-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs font-medium text-slate-400">Despesas Totais</CardTitle>
             <div className="rounded-full bg-rose-950 p-2 text-rose-400 border border-rose-900">
               <ArrowDownRight className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-rose-400">R$ {totalExpense.toFixed(2)}</div>
-            <p className="text-xs text-slate-400 mt-1">Saídas no período</p>
+            <div className="text-xl font-bold text-rose-400">R$ {totalExpense.toFixed(2)}</div>
+            <p className="text-[10px] text-slate-400 mt-1">Saídas e contas pagas</p>
           </CardContent>
         </Card>
 
         <Card className="border-slate-800 shadow-md bg-slate-900 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Lucro Líquido</CardTitle>
+            <CardTitle className="text-xs font-medium text-slate-400">Lucro Líquido</CardTitle>
             <div className="rounded-full bg-blue-950 p-2 text-blue-400 border border-blue-900">
               <TrendingUp className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            <div className={`text-xl font-bold ${netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
               R$ {netProfit.toFixed(2)}
             </div>
-            <p className="text-xs text-slate-400 mt-1">Saldo líquido do período</p>
+            <p className="text-[10px] text-slate-400 mt-1">Saldo líquido real</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Operational Metrics Cards */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+        <Card className="border-slate-800 shadow-md bg-slate-900 text-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-400">Total de Agendamentos</CardTitle>
+            <div className="rounded-full bg-blue-950 p-2 text-blue-400 border border-blue-900">
+              <Users className="h-4 w-4" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{totalBookingsCount}</div>
+            <p className="text-xs text-slate-400 mt-1">
+              {paidBookingsCount} pagos • {pendingBookingsCount} pendentes
+            </p>
           </CardContent>
         </Card>
 
         <Card className="border-slate-800 shadow-md bg-slate-900 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Contas Pendentes</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-400">Vendas Realizadas</CardTitle>
             <div className="rounded-full bg-amber-950 p-2 text-amber-400 border border-amber-900">
-              <ArrowUpRight className="h-4 w-4" />
+              <ShoppingBag className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-400">R$ {totalPendingPayable.toFixed(2)}</div>
-            <p className="text-xs text-slate-400 mt-1">A pagar no período</p>
+            <div className="text-2xl font-bold text-white">{totalSalesCount}</div>
+            <p className="text-xs text-slate-400 mt-1">Produtos vendidos na cantina</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-800 shadow-md bg-slate-900 text-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-400">Aproveitamento de Quadras</CardTitle>
+            <div className="rounded-full bg-emerald-950 p-2 text-emerald-400 border border-emerald-900">
+              <Percent className="h-4 w-4" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">
+              {totalBookingsCount > 0 ? ((paidBookingsCount / totalBookingsCount) * 100).toFixed(0) : 0}%
+            </div>
+            <p className="text-xs text-slate-400 mt-1">Taxa de adimplência das reservas</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Charts */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
         <Card className="border-slate-800 shadow-md bg-slate-900 text-white">
           <CardHeader>
             <CardTitle className="text-lg font-bold text-white">Fluxo de Caixa do Período</CardTitle>
@@ -241,17 +324,17 @@ export default function RelatoriosManagement({ bookings, transactions, sales, ac
               <div className="flex justify-between items-center p-3 bg-slate-950 border border-slate-800 rounded-xl">
                 <span className="text-sm font-semibold text-slate-300">Aluguel de Quadras (Diaristas)</span>
                 <span className="font-bold text-emerald-400">
-                  R$ {filteredTransactions.filter(t => t.category === 'Aluguel de Quadra').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}
+                  R$ {fieldsRevenue.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between items-center p-3 bg-slate-950 border border-slate-800 rounded-xl">
                 <span className="text-sm font-semibold text-slate-300">Vendas de Produtos (Bar/Lanchonete)</span>
-                <span className="font-bold text-emerald-400">R$ {totalSales.toFixed(2)}</span>
+                <span className="font-bold text-emerald-400">R$ {canteenRevenue.toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center p-3 bg-slate-950 border border-slate-800 rounded-xl">
-                <span className="text-sm font-semibold text-slate-300">Eventos e Torneios</span>
+                <span className="text-sm font-semibold text-slate-300">Outras Receitas</span>
                 <span className="font-bold text-emerald-400">
-                  R$ {filteredTransactions.filter(t => t.category === 'Eventos').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}
+                  R$ {otherRevenue.toFixed(2)}
                 </span>
               </div>
             </div>
