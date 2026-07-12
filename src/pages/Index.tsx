@@ -14,6 +14,7 @@ import RelatoriosManagement from '@/components/RelatoriosManagement';
 import CamposManagement from '@/components/CamposManagement';
 import WhatsAppSimulator from '@/components/WhatsAppSimulator';
 import { MadeWithDyad } from "@/components/made-with-dyad";
+import { Menu, X } from 'lucide-react';
 
 // Mock initial data
 const INITIAL_FIELDS = [
@@ -49,12 +50,12 @@ const INITIAL_SETTINGS = {
 };
 
 const INITIAL_MENSALISTAS = [
-  { id: '1', customerName: 'Marcos Paulo', customerPhone: '(11) 97777-6666', fieldId: '1', fieldName: 'Quadra de Futebol Society A', sport: 'Futebol', dayOfWeek: 1, timeSlot: '20:00 - 21:00', price: 450, active: true },
-  { id: '2', customerName: 'Juliana Lima', customerPhone: '(11) 96666-5555', fieldId: '3', fieldName: 'Arena Beach Tennis 1', sport: 'Beach Tennis', dayOfWeek: 3, timeSlot: '19:00 - 20:00', price: 380, active: true }
+  { id: '1', customerName: 'Marcos Paulo', customerPhone: '(11) 97777-6666', fieldId: '1', fieldName: 'Quadra de Futebol Society A', sport: 'Futebol', dayOfWeek: 1, timeSlot: '20:00 - 21:00', price: 450, active: true, recurrence: 'weekly' },
+  { id: '2', customerName: 'Juliana Lima', customerPhone: '(11) 96666-5555', fieldId: '3', fieldName: 'Arena Beach Tennis 1', sport: 'Beach Tennis', dayOfWeek: 3, timeSlot: '19:00 - 20:00', price: 380, active: true, recurrence: 'weekly' }
 ];
 
 const INITIAL_EVENTOS = [
-  { id: '1', title: 'Torneio Interno de Beach Tennis', description: 'Campeonato de duplas mistas', date: new Date().toISOString().split('T')[0], startTime: '08:00', endTime: '18:00', price: 600, fieldId: '3', fieldName: 'Arena Beach Tennis 1' }
+  { id: '1', title: 'Torneio Interno de Beach Tennis', description: 'Campeonato de duplas mistas', date: new Date().toISOString().split('T')[0], startTime: '08:00', endTime: '18:00', price: 600, fieldId: '3', fieldName: 'Arena Beach Tennis 1', recurrence: 'once' }
 ];
 
 const INITIAL_ACCOUNTS_PAYABLE = [
@@ -74,6 +75,7 @@ const INITIAL_SALES = [
 
 export default function Index() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // State initialization with localStorage persistence
   const [fields, setFields] = useState(() => {
@@ -380,25 +382,46 @@ export default function Index() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100">
-      {/* Sidebar */}
-      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+    <div className="flex min-h-screen bg-slate-950 text-slate-100 relative">
+      {/* Sidebar - Collapsible on Mobile */}
+      <div className={`fixed inset-y-0 left-0 z-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out`}>
+        <Sidebar activeTab={activeTab} onTabChange={(tab) => {
+          setActiveTab(tab);
+          setIsSidebarOpen(false);
+        }} />
+      </div>
+
+      {/* Overlay for mobile sidebar */}
+      {isSidebarOpen && (
+        <div 
+          onClick={() => setIsSidebarOpen(false)} 
+          className="fixed inset-0 bg-black/60 z-40 md:hidden"
+        />
+      )}
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-h-screen overflow-y-auto bg-slate-950">
+      <main className="flex-1 flex flex-col min-h-screen overflow-y-auto bg-slate-950 w-full">
         {/* Top Header */}
-        <header className="bg-slate-900 border-b border-slate-800 px-8 py-4 flex items-center justify-between sticky top-0 z-30">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-slate-400">Arena Ativa:</span>
-            <span className="text-sm font-bold text-white bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-lg">{settings.name}</span>
+        <header className="bg-slate-900 border-b border-slate-800 px-4 md:px-8 py-4 flex items-center justify-between sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white md:hidden"
+            >
+              <Menu size={20} />
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-xs md:text-sm font-semibold text-slate-400">Arena Ativa:</span>
+              <span className="text-xs md:text-sm font-bold text-white bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-lg">{settings.name}</span>
+            </div>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-xs text-slate-500">Última sincronização: Agora mesmo</span>
+            <span className="text-xs text-slate-500 hidden sm:inline">Última sincronização: Agora mesmo</span>
           </div>
         </header>
 
         {/* Tab Content */}
-        <div className="flex-1 p-8 max-w-7xl w-full mx-auto">
+        <div className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
           {activeTab === 'dashboard' && (
             <DashboardOverview 
               bookings={bookings} 

@@ -110,7 +110,7 @@ export default function DiaristasManagement({
         </div>
         <Button 
           onClick={() => setIsOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2.5 flex items-center gap-2"
+          className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2.5 flex items-center gap-2 font-bold"
         >
           <Plus size={18} />
           Novo Diarista
@@ -136,7 +136,7 @@ export default function DiaristasManagement({
                 <button
                   onClick={() => {
                     onTogglePaid(booking.id);
-                    showSuccess("Status de pagamento atualizado!");
+                    showSuccess("Status de pagamento updated!");
                   }}
                   className={`rounded-full px-2.5 py-0.5 text-xs font-semibold transition-all ${
                     booking.paid 
@@ -179,7 +179,7 @@ export default function DiaristasManagement({
                       showSuccess("Agendamento cancelado!");
                     }
                   }}
-                  className="w-full rounded-xl text-red-400 hover:text-red-300 hover:bg-red-950/30 flex items-center justify-center gap-1.5"
+                  className="w-full rounded-xl text-red-400 hover:text-red-300 hover:bg-red-950/30 flex items-center justify-center gap-1.5 font-bold"
                 >
                   <Trash2 size={14} />
                   Cancelar Reserva
@@ -199,8 +199,8 @@ export default function DiaristasManagement({
       {/* Modal */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="bg-gradient-to-r from-slate-950 to-slate-900 p-6 text-white flex justify-between items-center border-b border-slate-800">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
+            <div className="bg-gradient-to-r from-slate-950 to-slate-900 p-6 text-white flex justify-between items-center border-b border-slate-800 shrink-0">
               <div>
                 <h3 className="text-xl font-bold">Novo Diarista</h3>
                 <p className="text-xs text-slate-400 mt-1">Agende uma reserva avulsa</p>
@@ -210,7 +210,7 @@ export default function DiaristasManagement({
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
               {/* Quick Select Existing Customer */}
               <div className="space-y-1">
                 <Label className="text-slate-300 font-semibold flex items-center gap-1.5">
@@ -353,18 +353,18 @@ export default function DiaristasManagement({
                 </div>
               </div>
 
-              <div className="pt-4 flex gap-3">
+              <div className="pt-4 flex gap-3 shrink-0">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setIsOpen(false)}
-                  className="flex-1 rounded-xl border-slate-800 bg-slate-950 text-white"
+                  className="flex-1 rounded-xl border-slate-800 bg-slate-950 text-white font-bold"
                 >
                   Cancelar
                 </Button>
                 <Button
                   type="submit"
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold"
                 >
                   Confirmar Reserva
                 </Button>
