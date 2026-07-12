@@ -4,10 +4,13 @@ import React, { useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import DashboardOverview from '@/components/DashboardOverview';
 import BookingCalendar from '@/components/BookingCalendar';
-import FieldManagement from '@/components/FieldManagement';
 import CustomerManagement from '@/components/CustomerManagement';
 import FinancialManagement from '@/components/FinancialManagement';
 import SettingsManagement from '@/components/SettingsManagement';
+import MensalistaManagement from '@/components/MensalistaManagement';
+import EventManagement from '@/components/EventManagement';
+import AccountsPayableManagement from '@/components/AccountsPayableManagement';
+import AdminManagement from '@/components/AdminManagement';
 import WhatsAppSimulator from '@/components/WhatsAppSimulator';
 import { MadeWithDyad } from "@/components/made-with-dyad";
 
@@ -44,6 +47,25 @@ const INITIAL_SETTINGS = {
   bankName: "Banco Cora"
 };
 
+const INITIAL_MENSALISTAS = [
+  { id: '1', customerName: 'Marcos Paulo', customerPhone: '(11) 97777-6666', fieldId: '1', fieldName: 'Quadra de Futebol Society A', sport: 'Futebol', dayOfWeek: 1, timeSlot: '20:00 - 21:00', price: 450, active: true },
+  { id: '2', customerName: 'Juliana Lima', customerPhone: '(11) 96666-5555', fieldId: '3', fieldName: 'Arena Beach Tennis 1', sport: 'Beach Tennis', dayOfWeek: 3, timeSlot: '19:00 - 20:00', price: 380, active: true }
+];
+
+const INITIAL_EVENTOS = [
+  { id: '1', title: 'Torneio Interno de Beach Tennis', description: 'Campeonato de duplas mistas', date: new Date().toISOString().split('T')[0], startTime: '08:00', endTime: '18:00', price: 600, fieldId: '3', fieldName: 'Arena Beach Tennis 1' }
+];
+
+const INITIAL_ACCOUNTS_PAYABLE = [
+  { id: '1', description: 'Conta de Energia Elétrica', amount: 450, dueDate: new Date().toISOString().split('T')[0], category: 'Energia / Água', status: 'pending' },
+  { id: '2', description: 'Manutenção dos Refletores', amount: 300, dueDate: new Date().toISOString().split('T')[0], category: 'Manutenção', status: 'paid' }
+];
+
+const INITIAL_ADMINS = [
+  { id: '1', name: 'Administrador Master', email: 'admin@arenagestao.com', role: 'master' },
+  { id: '2', name: 'Lucas Gerente', email: 'lucas@arenagestao.com', role: 'manager' }
+];
+
 export default function Index() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [fields, setFields] = useState(INITIAL_FIELDS);
@@ -51,20 +73,12 @@ export default function Index() {
   const [bookings, setBookings] = useState(INITIAL_BOOKINGS);
   const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
   const [settings, setSettings] = useState(INITIAL_SETTINGS);
+  const [blockedSlots, setBlockedSlots] = useState<any[]>([]);
+  const [mensalistas, setMensalistas] = useState<any[]>(INITIAL_MENSALISTAS);
+  const [eventos, setEventos] = useState<any[]>(INITIAL_EVENTOS);
+  const [accountsPayable, setAccountsPayable] = useState<any[]>(INITIAL_ACCOUNTS_PAYABLE);
+  const [admins, setAdmins] = useState<any[]>(INITIAL_ADMINS);
   const [whatsappMessage, setWhatsappMessage] = useState<string | null>(null);
-
-  // Field Handlers
-  const handleAddField = (newField: any) => {
-    setFields([...fields, newField]);
-  };
-
-  const handleDeleteField = (id: string) => {
-    setFields(fields.filter(f => f.id !== id));
-  };
-
-  const handleUpdateField = (updatedField: any) => {
-    setFields(fields.map(f => f.id === updatedField.id ? updatedField : f));
-  };
 
   // Customer Handlers
   const handleAddCustomer = (newCustomer: any) => {
@@ -133,6 +147,87 @@ export default function Index() {
     }));
   };
 
+  // Block Slot Handlers
+  const handleBlockSlot = (newBlock: any) => {
+    setBlockedSlots([...blockedSlots, newBlock]);
+  };
+
+  const handleUnblockSlot = (id: string) => {
+    setBlockedSlots(blockedSlots.filter(b => b.id !== id));
+  };
+
+  // Mensalista Handlers
+  const handleAddMensalista = (newMensalista: any) => {
+    setMensalistas([...mensalistas, newMensalista]);
+  };
+
+  const handleDeleteMensalista = (id: string) => {
+    setMensalistas(mensalistas.filter(m => m.id !== id));
+  };
+
+  const handleToggleMensalistaActive = (id: string) => {
+    setMensalistas(mensalistas.map(m => m.id === id ? { ...m, active: !m.active } : m));
+  };
+
+  // Event Handlers
+  const handleAddEvento = (newEvento: any) => {
+    setEventos([...eventos, newEvento]);
+    // Automatically add to transactions as income
+    const newTransaction = {
+      id: Date.now().toString() + '-ev',
+      description: `Evento: ${newEvento.title}`,
+      amount: newEvento.price,
+      type: 'income',
+      category: 'Eventos',
+      date: newEvento.date
+    };
+    setTransactions([newTransaction, ...transactions]);
+  };
+
+  const handleDeleteEvento = (id: string) => {
+    setEventos(eventos.filter(e => e.id !== id));
+  };
+
+  // Accounts Payable Handlers
+  const handleAddAccount = (newAccount: any) => {
+    setAccountsPayable([...accountsPayable, newAccount]);
+  };
+
+  const handleDeleteAccount = (id: string) => {
+    setAccountsPayable(accountsPayable.filter(a => a.id !== id));
+  };
+
+  const handleTogglePaidStatus = (id: string) => {
+    setAccountsPayable(accountsPayable.map(a => {
+      if (a.id === id) {
+        const updatedStatus = a.status === 'paid' ? 'pending' : 'paid';
+        // If toggled to paid, add to transactions as expense
+        if (updatedStatus === 'paid') {
+          const newTransaction = {
+            id: Date.now().toString() + '-ap',
+            description: `Pagamento: ${a.description}`,
+            amount: a.amount,
+            type: 'expense',
+            category: a.category,
+            date: new Date().toISOString().split('T')[0]
+          };
+          setTransactions(prev => [newTransaction, ...prev]);
+        }
+        return { ...a, status: updatedStatus };
+      }
+      return a;
+    }));
+  };
+
+  // Admin Handlers
+  const handleAddAdmin = (newAdmin: any) => {
+    setAdmins([...admins, newAdmin]);
+  };
+
+  const handleDeleteAdmin = (id: string) => {
+    setAdmins(admins.filter(a => a.id !== id));
+  };
+
   // Transaction Handlers
   const handleAddTransaction = (newTransaction: any) => {
     setTransactions([newTransaction, ...transactions]);
@@ -177,18 +272,32 @@ export default function Index() {
               bookings={bookings} 
               customers={customers} 
               fields={fields}
+              blockedSlots={blockedSlots}
+              mensalistas={mensalistas}
               onAddBooking={handleAddBooking}
               onDeleteBooking={handleDeleteBooking}
               onTogglePaid={handleTogglePaid}
+              onBlockSlot={handleBlockSlot}
+              onUnblockSlot={handleUnblockSlot}
             />
           )}
 
-          {activeTab === 'fields' && (
-            <FieldManagement 
+          {activeTab === 'mensalistas' && (
+            <MensalistaManagement 
+              mensalistas={mensalistas}
               fields={fields}
-              onAddField={handleAddField}
-              onDeleteField={handleDeleteField}
-              onUpdateField={handleUpdateField}
+              onAddMensalista={handleAddMensalista}
+              onDeleteMensalista={handleDeleteMensalista}
+              onToggleActive={handleToggleMensalistaActive}
+            />
+          )}
+
+          {activeTab === 'eventos' && (
+            <EventManagement 
+              eventos={eventos}
+              fields={fields}
+              onAddEvento={handleAddEvento}
+              onDeleteEvento={handleDeleteEvento}
             />
           )}
 
@@ -207,6 +316,23 @@ export default function Index() {
               transactions={transactions}
               onAddTransaction={handleAddTransaction}
               onDeleteTransaction={handleDeleteTransaction}
+            />
+          )}
+
+          {activeTab === 'payable' && (
+            <AccountsPayableManagement 
+              accountsPayable={accountsPayable}
+              onAddAccount={handleAddAccount}
+              onDeleteAccount={handleDeleteAccount}
+              onTogglePaidStatus={handleTogglePaidStatus}
+            />
+          )}
+
+          {activeTab === 'admins' && (
+            <AdminManagement 
+              admins={admins}
+              onAddAdmin={handleAddAdmin}
+              onDeleteAdmin={handleDeleteAdmin}
             />
           )}
 

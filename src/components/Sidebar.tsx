@@ -4,11 +4,13 @@ import React from 'react';
 import { 
   LayoutDashboard, 
   Calendar, 
-  Activity, 
   Users, 
   DollarSign, 
   Settings,
-  LogOut
+  Award,
+  CreditCard,
+  ShieldAlert,
+  UserCheck
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -20,9 +22,12 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const menuItems = [
     { id: 'dashboard', label: 'Painel Geral', icon: LayoutDashboard },
     { id: 'calendar', label: 'Agendamentos', icon: Calendar },
-    { id: 'fields', label: 'Quadras', icon: Activity },
+    { id: 'mensalistas', label: 'Mensalistas', icon: UserCheck },
+    { id: 'eventos', label: 'Eventos', icon: Award },
     { id: 'customers', label: 'Clientes', icon: Users },
     { id: 'financial', label: 'Financeiro', icon: DollarSign },
+    { id: 'payable', label: 'Contas a Pagar', icon: CreditCard },
+    { id: 'admins', label: 'Administradores', icon: ShieldAlert },
     { id: 'settings', label: 'Configurações', icon: Settings },
   ];
 
@@ -40,7 +45,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1.5">
+      <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;

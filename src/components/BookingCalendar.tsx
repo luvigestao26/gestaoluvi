@@ -12,7 +12,10 @@ import {
   User, 
   Activity,
   Search,
-  Users
+  Users,
+  Lock,
+  Unlock,
+  CalendarDays
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,9 +28,13 @@ interface BookingCalendarProps {
   bookings: any[];
   customers: any[];
   fields: any[];
+  blockedSlots: any[];
+  mensalistas: any[];
   onAddBooking: (booking: any) => void;
   onDeleteBooking: (id: string) => void;
   onTogglePaid: (id: string) => void;
+  onBlockSlot: (block: any) => void;
+  onUnblockSlot: (id: string) => void;
 }
 
 const TIME_SLOTS = [
@@ -41,15 +48,21 @@ export default function BookingCalendar({
   bookings, 
   customers, 
   fields, 
-  onAddBooking, 
-  onDeleteBooking, 
-  onTogglePaid 
+  blockedSlots,
+  mensalistas,
+  onAddBooking,
+  onDeleteBooking,
+  onTogglePaid,
+  onBlockSlot,
+  onUnblockSlot
 }: BookingCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedFieldId, setSelectedFieldId] = useState<string>(fields[0]?.id || "");
   const [isNewBookingOpen, setIsNewBookingOpen] = useState(false);
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+  const [calendarTab, setCalendarTab] = useState<'diarista' | 'mensalista'>('diarista');
   
-  // Form states
+  // Form states for booking
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [selectedSport, setSelectedSport] = useState("Futebol");
@@ -57,9 +70,21 @@ export default function BookingCalendar({
   const [price, setPrice] = useState("");
   const [isPaid, setIsPaid] = useState(false);
 
+  // Form states for blocking
+  const [blockTimeSlot, setBlockTimeSlot] = useState("");
+  const [blockType, setBlockType] = useState<'single' | 'monthly'>('single');
+
+  // Get day of week for selected date (0 = Sunday, 1 = Monday, etc.)
+  const selectedDayOfWeek = new Date(selectedDate + 'T00:00:00').getDay();
+
   // Filter bookings for selected date and field
   const filteredBookings = bookings.filter(
     b => b.date === selectedDate && b.fieldId === selectedFieldId
+  );
+
+  // Filter mensalistas for selected day of week and field
+  const activeMensalistas = mensalistas.filter(
+    m => m.active && m.fieldId === selectedFieldId && m.dayOfWeek === selectedDayOfWeek
   );
 
   const handleFieldChange = (value: string) => {
@@ -79,10 +104,27 @@ export default function BookingCalendar({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmitBooking = (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName || !selectedTimeSlot || !selectedFieldId || !price) {
       showError("Por favor, preencha todos os campos obrigatórios.");
+      return;
+    }
+
+    // Check if slot is blocked
+    const isBlocked = blockedSlots.some(b => {
+      if (b.fieldId !== selectedFieldId || b.timeSlot !== selectedTimeSlot) return false;
+      if (b.type === 'single' && b.date === selectedDate) return true;
+      if (b.type === 'monthly') {
+        const [bYear, bMonth] = b.date.split('-');
+        const [sYear, sMonth] = selectedDate.split('-');
+        return bMonth === sMonth && bYear === sYear;
+      }
+      return false;
+    });
+
+    if (isBlocked) {
+      showError("Este horário está bloqueado pelo administrador!");
       return;
     }
 
@@ -92,7 +134,7 @@ export default function BookingCalendar({
     );
 
     if (isAlreadyBooked) {
-      showError("Este horário já está reservado para esta quadra!");
+      showError("Este horário já está reservado!");
       return;
     }
 
@@ -121,8 +163,53 @@ export default function BookingCalendar({
     setIsNewBookingOpen(false);
   };
 
+  const handleBlockSlotSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!blockTimeSlot) {
+      showError("Selecione um horário para bloquear.");
+      return;
+    }
+
+    const newBlock = {
+      id: Date.now().toString(),
+      fieldId: selectedFieldId,
+      date: selectedDate,
+      timeSlot: blockTimeSlot,
+      type: blockType
+    };
+
+    onBlockSlot(newBlock);
+    showSuccess("Horário bloqueado com sucesso!");
+    setBlockTimeSlot("");
+    setIsBlockModalOpen(false);
+  };
+
   return (
     <div className="space-y-6">
+      {/* Diarista vs Mensalista Tabs */}
+      <div className="flex border-b border-slate-200">
+        <button
+          onClick={() => setCalendarTab('diarista')}
+          className={`px-6 py-3 font-bold text-sm border-b-2 transition-all ${
+            calendarTab === 'diarista' 
+              ? 'border-emerald-600 text-emerald-600' 
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          Diaristas (Reservas Avulsas)
+        </button>
+        <button
+          onClick={() => setCalendarTab('mensalista')}
+          className={`px-6 py-3 font-bold text-sm border-b-2 transition-all ${
+            calendarTab === 'mensalista' 
+              ? 'border-emerald-600 text-emerald-600' 
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          Mensalistas (Horários Fixos)
+        </button>
+      </div>
+
       {/* Header Controls */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white p-4 rounded-2xl shadow-sm">
         <div className="flex flex-wrap gap-3 items-center">
@@ -151,13 +238,23 @@ export default function BookingCalendar({
           </div>
         </div>
 
-        <Button 
-          onClick={() => setIsNewBookingOpen(true)}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-4 py-2.5 flex items-center gap-2 self-end sm:self-auto"
-        >
-          <Plus size={18} />
-          Novo Agendamento
-        </Button>
+        <div className="flex gap-2 self-end sm:self-auto">
+          <Button 
+            onClick={() => setIsBlockModalOpen(true)}
+            variant="outline"
+            className="border-rose-200 text-rose-600 hover:bg-rose-50 rounded-xl px-4 py-2.5 flex items-center gap-2"
+          >
+            <Lock size={18} />
+            Bloquear Horário
+          </Button>
+          <Button 
+            onClick={() => setIsNewBookingOpen(true)}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-4 py-2.5 flex items-center gap-2"
+          >
+            <Plus size={18} />
+            Novo Agendamento
+          </Button>
+        </div>
       </div>
 
       {/* Main Grid */}
@@ -167,7 +264,7 @@ export default function BookingCalendar({
           <CardHeader className="border-b border-slate-100 pb-4">
             <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <Clock className="text-emerald-600" size={20} />
-              Grade de Horários
+              Grade de Horários ({calendarTab === 'diarista' ? 'Diaristas' : 'Mensalistas'})
             </CardTitle>
             <CardDescription>
               Horários para o dia {selectedDate.split('-').reverse().join('/')}
@@ -175,69 +272,121 @@ export default function BookingCalendar({
           </CardHeader>
           <CardContent className="p-0 divide-y divide-slate-100">
             {TIME_SLOTS.map(slot => {
+              // Check if slot is blocked
+              const block = blockedSlots.find(b => {
+                if (b.fieldId !== selectedFieldId || b.timeSlot !== slot) return false;
+                if (b.type === 'single' && b.date === selectedDate) return true;
+                if (b.type === 'monthly') {
+                  const [bYear, bMonth] = b.date.split('-');
+                  const [sYear, sMonth] = selectedDate.split('-');
+                  return bMonth === sMonth && bYear === sYear;
+                }
+                return false;
+              });
+
+              // Check if slot has a booking (Diarista)
               const booking = filteredBookings.find(b => b.timeSlot === slot);
+
+              // Check if slot has a mensalista
+              const mensalista = activeMensalistas.find(m => m.timeSlot === slot);
+
               return (
                 <div key={slot} className="flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors">
                   <div className="flex items-center gap-4">
                     <span className="text-sm font-semibold text-slate-600 w-28">{slot}</span>
-                    {booking ? (
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
-                          {booking.sport}
-                        </span>
-                        <span className="text-sm font-bold text-slate-800">{booking.customerName}</span>
-                        {booking.customerPhone && (
-                          <span className="text-xs text-slate-400">({booking.customerPhone})</span>
-                        )}
+                    
+                    {block ? (
+                      <div className="flex items-center gap-2 text-rose-600 font-semibold">
+                        <Lock size={14} />
+                        <span>Bloqueado pelo Administrador {block.type === 'monthly' && '(Mensal/Anual)'}</span>
                       </div>
+                    ) : calendarTab === 'diarista' ? (
+                      booking ? (
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                            {booking.sport}
+                          </span>
+                          <span className="text-sm font-bold text-slate-800">{booking.customerName}</span>
+                          {booking.customerPhone && (
+                            <span className="text-xs text-slate-400">({booking.customerPhone})</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-slate-400 italic">Disponível</span>
+                      )
                     ) : (
-                      <span className="text-sm text-slate-400 italic">Disponível</span>
+                      mensalista ? (
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+                            {mensalista.sport}
+                          </span>
+                          <span className="text-sm font-bold text-slate-800">{mensalista.customerName}</span>
+                          <span className="text-xs text-slate-400">(Mensalista Fixo)</span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-slate-400 italic">Sem mensalista fixo neste dia</span>
+                      )
                     )}
                   </div>
 
                   <div>
-                    {booking ? (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => onTogglePaid(booking.id)}
-                          className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
-                            booking.paid 
-                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' 
-                              : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                          }`}
-                        >
-                          {booking.paid ? 'Pago' : 'Pendente'}
-                        </button>
-                        <button
-                          onClick={() => {
-                            if(confirm("Deseja realmente cancelar este agendamento?")) {
-                              onDeleteBooking(booking.id);
-                              showSuccess("Agendamento cancelado!");
-                            }
-                          }}
-                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    ) : (
+                    {block ? (
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => {
-                          setSelectedTimeSlot(slot);
-                          const field = fields.find(f => f.id === selectedFieldId);
-                          if (field) {
-                            setSelectedSport(field.sport);
-                            setPrice(field.pricePerHour.toString());
-                          }
-                          setIsNewBookingOpen(true);
+                          onUnblockSlot(block.id);
+                          showSuccess("Horário desbloqueado!");
                         }}
-                        className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg"
+                        className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg flex items-center gap-1"
                       >
-                        Reservar
+                        <Unlock size={14} />
+                        Desbloquear
                       </Button>
-                    )}
+                    ) : calendarTab === 'diarista' ? (
+                      booking ? (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => onTogglePaid(booking.id)}
+                            className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                              booking.paid 
+                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' 
+                                : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                            }`}
+                          >
+                            {booking.paid ? 'Pago' : 'Pendente'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              if(confirm("Deseja realmente cancelar este agendamento?")) {
+                                onDeleteBooking(booking.id);
+                                showSuccess("Agendamento cancelado!");
+                              }
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setSelectedTimeSlot(slot);
+                            const field = fields.find(f => f.id === selectedFieldId);
+                            if (field) {
+                              setSelectedSport(field.sport);
+                              setPrice(field.pricePerHour.toString());
+                            }
+                            setIsNewBookingOpen(true);
+                          }}
+                          className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg"
+                        >
+                          Reservar
+                        </Button>
+                      )
+                    ) : null}
                   </div>
                 </div>
               );
@@ -274,6 +423,69 @@ export default function BookingCalendar({
         </div>
       </div>
 
+      {/* Block Slot Modal */}
+      {isBlockModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-gradient-to-r from-rose-600 to-red-500 p-6 text-white flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold">Bloquear Horário</h3>
+                <p className="text-xs text-rose-100 mt-1">Impeça reservas neste horário específico</p>
+              </div>
+              <button onClick={() => setIsBlockModalOpen(false)} className="p-1.5 rounded-full bg-white/10 hover:bg-white/20">
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleBlockSlotSubmit} className="p-6 space-y-4">
+              <div className="space-y-1">
+                <Label className="text-slate-700 font-semibold">Horário para Bloquear *</Label>
+                <Select value={blockTimeSlot} onValueChange={setBlockTimeSlot}>
+                  <SelectTrigger className="rounded-xl border-slate-200">
+                    <SelectValue placeholder="Selecione o horário" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIME_SLOTS.map(slot => (
+                      <SelectItem key={slot} value={slot}>{slot}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-slate-700 font-semibold">Tipo de Bloqueio</Label>
+                <Select value={blockType} onValueChange={(v: any) => setBlockType(v)}>
+                  <SelectTrigger className="rounded-xl border-slate-200">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="single">Apenas nesta data específica</SelectItem>
+                    <SelectItem value="monthly">Bloqueio Mensal / Anual (Recorrente)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsBlockModalOpen(false)}
+                  className="flex-1 rounded-xl border-slate-200"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 bg-rose-600 hover:bg-rose-700 text-white rounded-xl"
+                >
+                  Bloquear Horário
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* New Booking Modal */}
       {isNewBookingOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -291,7 +503,7 @@ export default function BookingCalendar({
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmitBooking} className="p-6 space-y-4">
               {/* Quick Select Existing Customer */}
               <div className="space-y-1">
                 <Label className="text-slate-700 font-semibold flex items-center gap-1.5">
