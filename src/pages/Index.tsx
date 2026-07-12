@@ -405,6 +405,8 @@ export default function Index() {
               customers={customers} 
               fields={fields} 
               transactions={transactions}
+              products={products}
+              sales={sales}
               onNavigate={setActiveTab}
               onResetAllData={handleResetAllData}
             />

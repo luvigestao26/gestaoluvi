@@ -23,6 +23,8 @@ interface DashboardOverviewProps {
   customers: any[];
   fields: any[];
   transactions: any[];
+  products: any[];
+  sales: any[];
   onNavigate: (tab: string) => void;
   onResetAllData?: () => void;
 }
@@ -32,6 +34,8 @@ export default function DashboardOverview({
   customers, 
   fields, 
   transactions, 
+  products,
+  sales,
   onNavigate,
   onResetAllData 
 }: DashboardOverviewProps) {
@@ -56,7 +60,7 @@ export default function DashboardOverview({
 
   const todayTotalRevenue = todayBookingsRevenue + todayCantinaRevenue;
 
-  // 4. Lucro Líquido (Total Income - Total Expenses)
+  // 4. Lucro Líquido (Total Income - Total Expenses - Cost of Goods Sold)
   const totalIncome = transactions
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
@@ -65,7 +69,14 @@ export default function DashboardOverview({
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const netProfit = totalIncome - totalExpense;
+  // Calculate Cost of Goods Sold (COGS) dynamically
+  const cogs = sales.reduce((sum, sale) => {
+    const product = products.find(p => p.id === sale.productId);
+    const cost = product ? product.costPrice : 0;
+    return sum + (cost * sale.quantity);
+  }, 0);
+
+  const netProfit = totalIncome - totalExpense - cogs;
 
   // Filter bookings for today
   const todayBookingsList = bookings.filter(b => b.date === todayStr);
