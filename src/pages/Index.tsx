@@ -12,9 +12,13 @@ import VendasManagement from '@/components/VendasManagement';
 import DiaristasManagement from '@/components/DiaristasManagement';
 import RelatoriosManagement from '@/components/RelatoriosManagement';
 import CamposManagement from '@/components/CamposManagement';
+import SettingsManagement from '@/components/SettingsManagement';
+import SuperAdminDashboard from '@/components/SuperAdminDashboard';
 import WhatsAppSimulator from '@/components/WhatsAppSimulator';
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import { Menu, X } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Menu, X, ShieldAlert } from 'lucide-react';
+import { showSuccess } from '@/utils/toast';
 
 // Mock initial data
 const INITIAL_FIELDS = [
@@ -73,9 +77,24 @@ const INITIAL_SALES = [
   { id: '1', productId: '1', productName: 'Água Mineral 500ml', quantity: 2, total: 7.00, paymentMethod: 'Pix', customerName: 'Carlos Eduardo', date: new Date().toISOString().split('T')[0] }
 ];
 
+// SaaS Initial Mock Data
+const INITIAL_TENANTS = [
+  { id: '101', name: 'Arena Central SP', ownerName: 'Roberto Alencar', email: 'roberto@arenacentral.com', phone: '(11) 98888-7777', projectType: 'Gestão de Arena', monthlyFee: 149.90, status: 'active', createdAt: '2024-01-10', nextBilling: '2024-11-10' },
+  { id: '102', name: 'Escolinha de Futebol Meninos da Vila', ownerName: 'Marcos Paulo', email: 'marcos@meninosdavila.com', phone: '(11) 97777-6666', projectType: 'Escolinha de Futebol', monthlyFee: 199.90, status: 'trial', createdAt: '2024-10-20', nextBilling: '2024-11-20' },
+  { id: '103', name: 'Beach Tennis Club', ownerName: 'Juliana Lima', email: 'juliana@beachclub.com', phone: '(11) 96666-5555', projectType: 'Gestão de Arena', monthlyFee: 149.90, status: 'overdue', createdAt: '2024-02-15', nextBilling: '2024-10-15' }
+];
+
+const INITIAL_TICKETS = [
+  { id: '1', tenantId: '103', tenantName: 'Beach Tennis Club', subject: 'Dúvida sobre faturamento de mensalistas', message: 'Olá, gostaria de saber como configurar mensalistas que jogam de 15 em 15 dias.', category: 'Dúvida', status: 'open', createdAt: '2024-10-28', replies: [] },
+  { id: '2', tenantId: '101', tenantName: 'Arena Central SP', subject: 'Erro ao estornar venda da cantina', message: 'Tentei estornar uma venda de água mineral e o estoque não atualizou.', category: 'Bug', status: 'in_progress', createdAt: '2024-10-27', replies: [{ sender: 'admin', message: 'Olá Roberto, estamos analisando o log do seu caixa.', createdAt: '2024-10-27' }] }
+];
+
 export default function Index() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Impersonation state (SaaS Support Mode)
+  const [impersonatedTenant, setImpersonatedTenant] = useState<any | null>(null);
 
   // State initialization with localStorage persistence
   const [fields, setFields] = useState(() => {
@@ -133,6 +152,17 @@ export default function Index() {
     return saved ? JSON.parse(saved) : INITIAL_SALES;
   });
 
+  // SaaS States
+  const [tenants, setTenants] = useState(() => {
+    const saved = localStorage.getItem('ga_tenants');
+    return saved ? JSON.parse(saved) : INITIAL_TENANTS;
+  });
+
+  const [tickets, setTickets] = useState(() => {
+    const saved = localStorage.getItem('ga_tickets');
+    return saved ? JSON.parse(saved) : INITIAL_TICKETS;
+  });
+
   const [whatsappMessage, setWhatsappMessage] = useState<string | null>(null);
 
   // Sync states to localStorage
@@ -179,6 +209,14 @@ export default function Index() {
   useEffect(() => {
     localStorage.setItem('ga_sales', JSON.stringify(sales));
   }, [sales]);
+
+  useEffect(() => {
+    localStorage.setItem('ga_tenants', JSON.stringify(tenants));
+  }, [tenants]);
+
+  useEffect(() => {
+    localStorage.setItem('ga_tickets', JSON.stringify(tickets));
+  }, [tickets]);
 
   // Reset All Data Handler
   const handleResetAllData = () => {
@@ -398,6 +436,60 @@ export default function Index() {
     setSales(sales.filter(s => s.id !== id));
   };
 
+  const handleSaveSettings = (newSettings: any) => {
+    setSettings(newSettings);
+  };
+
+  // SaaS Handlers
+  const handleAddTenant = (newTenant: any) => {
+    setTenants([...tenants, newTenant]);
+  };
+
+  const handleUpdateTenantStatus = (id: string, status: string) => {
+    setTenants(tenants.map(t => t.id === id ? { ...t, status } : t));
+    showSuccess("Status da assinatura atualizado!");
+  };
+
+  const handleImpersonateTenant = (tenant: any) => {
+    setImpersonatedTenant(tenant);
+    // Switch settings to impersonated tenant
+    setSettings({
+      name: tenant.name,
+      address: "Endereço do Cliente SaaS",
+      phone: tenant.phone || "(11) 99999-9999",
+      openTime: "08:00",
+      closeTime: "23:00",
+      pixKey: "pix@cliente.com",
+      bankName: "Banco do Cliente"
+    });
+    setActiveTab('dashboard');
+    showSuccess(`Acessando painel como: ${tenant.name}`);
+  };
+
+  const handleResolveTicket = (id: string) => {
+    setTickets(tickets.map(t => t.id === id ? { ...t, status: 'resolved' } : t));
+  };
+
+  const handleAddTicketReply = (id: string, reply: string) => {
+    setTickets(tickets.map(t => {
+      if (t.id === id) {
+        return {
+          ...t,
+          status: 'in_progress',
+          replies: [
+            ...(t.replies || []),
+            {
+              sender: 'admin',
+              message: reply,
+              createdAt: new Date().toISOString().split('T')[0]
+            }
+          ]
+        };
+      }
+      return t;
+    }));
+  };
+
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-100 relative">
       {/* Sidebar - Collapsible on Mobile */}
@@ -430,10 +522,30 @@ export default function Index() {
             <div className="flex items-center gap-2">
               <span className="text-xs md:text-sm font-semibold text-slate-400">Arena Ativa:</span>
               <span className="text-xs md:text-sm font-bold text-white bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-lg">{settings.name}</span>
+              {impersonatedTenant && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-purple-950 border border-purple-900 px-2.5 py-0.5 text-xs font-semibold text-purple-400 animate-pulse">
+                  <ShieldAlert size={12} />
+                  Modo Suporte Ativo
+                </span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-xs text-slate-500 hidden sm:inline">Última sincronização: Agora mesmo</span>
+            {impersonatedTenant ? (
+              <Button
+                size="sm"
+                onClick={() => {
+                  setImpersonatedTenant(null);
+                  setSettings(INITIAL_SETTINGS);
+                  showSuccess("Retornou ao painel principal!");
+                }}
+                className="bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold"
+              >
+                Sair do Modo Suporte
+              </Button>
+            ) : (
+              <span className="text-xs text-slate-500 hidden sm:inline">Última sincronização: Agora mesmo</span>
+            )}
           </div>
         </header>
 
@@ -540,6 +652,25 @@ export default function Index() {
               transactions={transactions}
               sales={sales}
               accountsPayable={accountsPayable}
+            />
+          )}
+
+          {activeTab === 'settings' && (
+            <SettingsManagement 
+              arenaSettings={settings}
+              onSaveSettings={handleSaveSettings}
+            />
+          )}
+
+          {activeTab === 'superadmin' && (
+            <SuperAdminDashboard 
+              tenants={tenants}
+              tickets={tickets}
+              onAddTenant={handleAddTenant}
+              onUpdateTenantStatus={handleUpdateTenantStatus}
+              onImpersonateTenant={handleImpersonateTenant}
+              onResolveTicket={handleResolveTicket}
+              onAddTicketReply={handleAddTicketReply}
             />
           )}
         </div>

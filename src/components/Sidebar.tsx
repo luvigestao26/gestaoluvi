@@ -12,7 +12,9 @@ import {
   ShoppingCart,
   BarChart3,
   Users,
-  Shield
+  Shield,
+  Settings,
+  Layers
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -32,6 +34,8 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     { id: 'eventos', label: 'Eventos', icon: Award },
     { id: 'payable', label: 'Contas a Pagar', icon: CreditCard },
     { id: 'relatorios', label: 'Relatórios', icon: BarChart3 },
+    { id: 'settings', label: 'Configurações', icon: Settings },
+    { id: 'superadmin', label: 'Super Admin SaaS', icon: Layers },
   ];
 
   return (
@@ -58,11 +62,13 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               onClick={() => onTabChange(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
                 isActive 
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' 
+                  ? item.id === 'superadmin' 
+                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20'
+                    : 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' 
                   : 'hover:bg-slate-800/60 hover:text-white text-slate-400'
               }`}
             >
-              <Icon size={18} />
+              <Icon size={18} className={item.id === 'superadmin' && !isActive ? 'text-purple-400' : ''} />
               {item.label}
             </button>
           );
