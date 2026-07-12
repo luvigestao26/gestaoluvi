@@ -30,13 +30,13 @@ const INITIAL_CUSTOMERS = [
 ];
 
 const INITIAL_BOOKINGS = [
-  { id: '1', customerName: 'Carlos Eduardo', customerPhone: '(11) 98765-4321', fieldId: '1', fieldName: 'Quadra de Futebol Society A', sport: 'Futebol', date: new Date().toISOString().split('T')[0], timeSlot: '19:00 - 20:00', price: 120, paid: true },
-  { id: '2', customerName: 'Mariana Souza', customerPhone: '(11) 91234-5678', fieldId: '3', fieldName: 'Arena Beach Tennis 1', sport: 'Beach Tennis', date: new Date().toISOString().split('T')[0], timeSlot: '18:00 - 19:00', price: 80, paid: false },
+  { id: '1', customerName: 'Carlos Eduardo', customerPhone: '(11) 98765-4321', fieldId: '1', fieldName: 'Quadra de Futebol Society A', sport: 'Futebol', date: new Date().toISOString().split('T')[0], timeSlot: '19:00 - 20:00', price: 120, paid: true, paymentMethod: 'Pix' },
+  { id: '2', customerName: 'Mariana Souza', customerPhone: '(11) 91234-5678', fieldId: '3', fieldName: 'Arena Beach Tennis 1', sport: 'Beach Tennis', date: new Date().toISOString().split('T')[0], timeSlot: '18:00 - 19:00', price: 80, paid: false, paymentMethod: 'Dinheiro' },
 ];
 
 const INITIAL_TRANSACTIONS = [
-  { id: '1', description: 'Aluguel Quadra A - Carlos Eduardo', amount: 120, type: 'income', category: 'Aluguel de Quadra', date: new Date().toISOString().split('T')[0] },
-  { id: '2', description: 'Compra de Bolas de Tênis', amount: 150, type: 'expense', category: 'Manutenção', date: new Date().toISOString().split('T')[0] },
+  { id: '1', description: 'Aluguel Quadra A - Carlos Eduardo', amount: 120, type: 'income', category: 'Aluguel de Quadra', date: new Date().toISOString().split('T')[0], paymentMethod: 'Pix' },
+  { id: '2', description: 'Compra de Bolas de Tênis', amount: 150, type: 'expense', category: 'Manutenção', date: new Date().toISOString().split('T')[0], paymentMethod: 'Pix' },
 ];
 
 const INITIAL_SETTINGS = {
@@ -50,12 +50,12 @@ const INITIAL_SETTINGS = {
 };
 
 const INITIAL_MENSALISTAS = [
-  { id: '1', customerName: 'Marcos Paulo', customerPhone: '(11) 97777-6666', fieldId: '1', fieldName: 'Quadra de Futebol Society A', sport: 'Futebol', dayOfWeek: 1, timeSlot: '20:00 - 21:00', price: 450, active: true, recurrence: 'weekly' },
-  { id: '2', customerName: 'Juliana Lima', customerPhone: '(11) 96666-5555', fieldId: '3', fieldName: 'Arena Beach Tennis 1', sport: 'Beach Tennis', dayOfWeek: 3, timeSlot: '19:00 - 20:00', price: 380, active: true, recurrence: 'weekly' }
+  { id: '1', customerName: 'Marcos Paulo', customerPhone: '(11) 97777-6666', fieldId: '1', fieldName: 'Quadra de Futebol Society A', sport: 'Futebol', dayOfWeek: 1, timeSlot: '20:00 - 21:00', price: 450, active: true, recurrence: 'weekly', paymentMethod: 'Pix' },
+  { id: '2', customerName: 'Juliana Lima', customerPhone: '(11) 96666-5555', fieldId: '3', fieldName: 'Arena Beach Tennis 1', sport: 'Beach Tennis', dayOfWeek: 3, timeSlot: '19:00 - 20:00', price: 380, active: true, recurrence: 'weekly', paymentMethod: 'Cartão de Crédito' }
 ];
 
 const INITIAL_EVENTOS = [
-  { id: '1', title: 'Torneio Interno de Beach Tennis', description: 'Campeonato de duplas mistas', date: new Date().toISOString().split('T')[0], startTime: '08:00', endTime: '18:00', price: 600, fieldId: '3', fieldName: 'Arena Beach Tennis 1', recurrence: 'once' }
+  { id: '1', title: 'Torneio Interno de Beach Tennis', description: 'Campeonato de duplas mistas', date: new Date().toISOString().split('T')[0], startTime: '08:00', endTime: '18:00', price: 600, fieldId: '3', fieldName: 'Arena Beach Tennis 1', recurrence: 'once', paymentMethod: 'Pix' }
 ];
 
 const INITIAL_ACCOUNTS_PAYABLE = [
@@ -220,7 +220,8 @@ export default function Index() {
         amount: newBooking.price,
         type: 'income',
         category: 'Aluguel de Quadra',
-        date: newBooking.date
+        date: newBooking.date,
+        paymentMethod: newBooking.paymentMethod || 'Pix'
       };
       setTransactions([newTransaction, ...transactions]);
     }
@@ -246,7 +247,8 @@ export default function Index() {
             amount: b.price,
             type: 'income',
             category: 'Aluguel de Quadra',
-            date: b.date
+            date: b.date,
+            paymentMethod: b.paymentMethod || 'Pix'
           };
           setTransactions(prev => [newTransaction, ...prev]);
 
@@ -272,6 +274,18 @@ export default function Index() {
   // Mensalista Handlers
   const handleAddMensalista = (newMensalista: any) => {
     setMensalistas([...mensalistas, newMensalista]);
+    
+    // Automatically add to transactions as income
+    const newTransaction = {
+      id: Date.now().toString() + '-m',
+      description: `Mensalidade: ${newMensalista.customerName}`,
+      amount: newMensalista.price,
+      type: 'income',
+      category: 'Aluguel de Quadra',
+      date: new Date().toISOString().split('T')[0],
+      paymentMethod: newMensalista.paymentMethod || 'Pix'
+    };
+    setTransactions([newTransaction, ...transactions]);
   };
 
   const handleDeleteMensalista = (id: string) => {
@@ -291,7 +305,8 @@ export default function Index() {
       amount: newEvento.price,
       type: 'income',
       category: 'Eventos',
-      date: newEvento.date
+      date: newEvento.date,
+      paymentMethod: newEvento.paymentMethod || 'Pix'
     };
     setTransactions([newTransaction, ...transactions]);
   };
@@ -320,7 +335,8 @@ export default function Index() {
             amount: a.amount,
             type: 'expense',
             category: a.category,
-            date: new Date().toISOString().split('T')[0]
+            date: new Date().toISOString().split('T')[0],
+            paymentMethod: 'Pix'
           };
           setTransactions(prev => [newTransaction, ...prev]);
         }
@@ -362,7 +378,8 @@ export default function Index() {
       amount: newSale.total,
       type: 'income',
       category: 'Bar / Lanchonete',
-      date: newSale.date
+      date: newSale.date,
+      paymentMethod: newSale.paymentMethod || 'Pix'
     };
     setTransactions(prev => [newTransaction, ...prev]);
   };

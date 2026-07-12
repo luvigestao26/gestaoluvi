@@ -12,7 +12,10 @@ import {
   Utensils,
   Users,
   ShoppingBag,
-  Percent
+  Percent,
+  CreditCard,
+  Coins,
+  Smartphone
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -39,7 +42,6 @@ export default function RelatoriosManagement({ bookings, transactions, sales, ac
   const filteredTransactions = transactions.filter(t => t.date >= startDate && t.date <= endDate);
   const filteredSales = sales.filter(s => s.date >= startDate && s.date <= endDate);
   const filteredBookings = bookings.filter(b => b.date >= startDate && b.date <= endDate);
-  const filteredAccountsPayable = accountsPayable.filter(a => a.dueDate >= startDate && a.dueDate <= endDate);
 
   // Financial calculations
   const totalIncome = filteredTransactions
@@ -70,6 +72,25 @@ export default function RelatoriosManagement({ bookings, transactions, sales, ac
   const totalSalesCount = filteredSales.length;
   const paidBookingsCount = filteredBookings.filter(b => b.paid).length;
   const pendingBookingsCount = totalBookingsCount - paidBookingsCount;
+
+  // Payment Methods Breakdown for Income Transactions
+  const incomeTransactions = filteredTransactions.filter(t => t.type === 'income');
+  
+  const pixRevenue = incomeTransactions
+    .filter(t => !t.paymentMethod || t.paymentMethod === 'Pix')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const moneyRevenue = incomeTransactions
+    .filter(t => t.paymentMethod === 'Dinheiro')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const creditRevenue = incomeTransactions
+    .filter(t => t.paymentMethod === 'Cartão de Crédito')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const debitRevenue = incomeTransactions
+    .filter(t => t.paymentMethod === 'Cartão de Débito')
+    .reduce((sum, t) => sum + t.amount, 0);
 
   // Prepare chart data for selected range
   const getChartData = () => {
@@ -111,11 +132,11 @@ export default function RelatoriosManagement({ bookings, transactions, sales, ac
   // Export to Excel (CSV format)
   const handleExportExcel = () => {
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Data,Descricao,Categoria,Tipo,Valor (R$)\n";
+    csvContent += "Data,Descricao,Categoria,Tipo,Forma de Pagamento,Valor (R$)\n";
 
     filteredTransactions.forEach(t => {
       const formattedDate = t.date.split('-').reverse().join('/');
-      csvContent += `"${formattedDate}","${t.description}","${t.category}","${t.type === 'income' ? 'Entrada' : 'Saida'}",${t.amount}\n`;
+      csvContent += `"${formattedDate}","${t.description}","${t.category}","${t.type === 'income' ? 'Entrada' : 'Saida'}","${t.paymentMethod || 'Pix'}",${t.amount}\n`;
     });
 
     const encodedUri = encodeURI(csvContent);
@@ -236,6 +257,70 @@ export default function RelatoriosManagement({ bookings, transactions, sales, ac
           </CardContent>
         </Card>
       </div>
+
+      {/* Payment Methods Breakdown Section */}
+      <Card className="border-slate-800 shadow-md bg-slate-900 text-white">
+        <CardHeader>
+          <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
+            <Smartphone className="text-blue-400" size={20} />
+            Faturamento por Forma de Pagamento
+          </CardTitle>
+          <CardDescription className="text-slate-400">
+            Detalhamento das receitas recebidas por cada meio de pagamento no período selecionado
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="rounded-xl bg-blue-950/50 p-2.5 text-blue-400 border border-blue-900/50">
+                  <Smartphone size={20} />
+                </div>
+                <div>
+                  <span className="text-xs text-slate-400 block">Pix</span>
+                  <span className="text-lg font-bold text-white">R$ {pixRevenue.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="rounded-xl bg-emerald-950/50 p-2.5 text-emerald-400 border border-emerald-900/50">
+                  <Coins size={20} />
+                </div>
+                <div>
+                  <span className="text-xs text-slate-400 block">Dinheiro</span>
+                  <span className="text-lg font-bold text-white">R$ {moneyRevenue.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="rounded-xl bg-purple-950/50 p-2.5 text-purple-400 border border-purple-900/50">
+                  <CreditCard size={20} />
+                </div>
+                <div>
+                  <span className="text-xs text-slate-400 block">Cartão de Crédito</span>
+                  <span className="text-lg font-bold text-white">R$ {creditRevenue.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="rounded-xl bg-amber-950/50 p-2.5 text-amber-400 border border-amber-900/50">
+                  <CreditCard size={20} />
+                </div>
+                <div>
+                  <span className="text-xs text-slate-400 block">Cartão de Débito</span>
+                  <span className="text-lg font-bold text-white">R$ {debitRevenue.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Operational Metrics Cards */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">

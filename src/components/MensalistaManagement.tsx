@@ -50,6 +50,7 @@ export default function MensalistaManagement({
   const [timeSlot, setTimeSlot] = useState("");
   const [price, setPrice] = useState("");
   const [recurrence, setRecurrence] = useState("weekly"); // weekly, biweekly, monthly_3x, custom
+  const [paymentMethod, setPaymentMethod] = useState("Pix");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +72,8 @@ export default function MensalistaManagement({
       timeSlot,
       price: parseFloat(price),
       active: true,
-      recurrence
+      recurrence,
+      paymentMethod
     };
 
     onAddMensalista(newMensalista);
@@ -90,7 +92,7 @@ export default function MensalistaManagement({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-sm">
         <div>
           <h2 className="text-xl font-bold text-white">Mensalistas</h2>
-          <p className="text-sm text-slate-400">Gerencie os clientes mensalistas com horários fixos semanais</p>
+          <p className="text-sm text-slate-400">Gerencie os clients mensalistas com horários fixos semanais</p>
         </div>
         <Button 
           onClick={() => setIsOpen(true)}
@@ -148,6 +150,10 @@ export default function MensalistaManagement({
                    m.recurrence === 'biweekly' ? 'De 15 em 15 dias' : 
                    m.recurrence === 'monthly_3x' ? '3 vezes no mês' : 'Personalizado'}
                 </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400">Pagamento:</span>
+                <span className="text-xs font-semibold text-emerald-400">{m.paymentMethod || 'Pix'}</span>
               </div>
               <div className="flex items-center justify-between p-2.5 bg-slate-950 border border-slate-800 rounded-xl mt-2">
                 <span className="text-xs text-slate-400">Mensalidade</span>
@@ -297,17 +303,32 @@ export default function MensalistaManagement({
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="mPrice" className="text-slate-300 font-semibold">Valor Mensal (R$) *</Label>
-                  <Input
-                    id="mPrice"
-                    type="number"
-                    placeholder="Ex: 400.00"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    className="rounded-xl border-slate-800 bg-slate-950 text-white"
-                    required
-                  />
+                  <Label className="text-slate-300 font-semibold">Forma de Pagamento</Label>
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-950 border-slate-800 text-white">
+                      <SelectItem value="Pix">Pix 📱</SelectItem>
+                      <SelectItem value="Dinheiro">Dinheiro 💵</SelectItem>
+                      <SelectItem value="Cartão de Crédito">Cartão de Crédito 💳</SelectItem>
+                      <SelectItem value="Cartão de Débito">Cartão de Débito 💳</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="mPrice" className="text-slate-300 font-semibold">Valor Mensal (R$) *</Label>
+                <Input
+                  id="mPrice"
+                  type="number"
+                  placeholder="Ex: 400.00"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  className="rounded-xl border-slate-800 bg-slate-950 text-white"
+                  required
+                />
               </div>
 
               <div className="pt-4 flex gap-3 shrink-0">

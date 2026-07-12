@@ -39,6 +39,7 @@ export default function DiaristasManagement({
   const [endTime, setEndTime] = useState("19:00");
   const [price, setPrice] = useState("");
   const [isPaid, setIsPaid] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("Pix");
 
   const filteredBookings = bookings.filter(b => 
     b.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -83,7 +84,8 @@ export default function DiaristasManagement({
       date,
       timeSlot: customTimeSlot,
       price: parseFloat(price),
-      paid: isPaid
+      paid: isPaid,
+      paymentMethod
     };
 
     onAddBooking(newBooking);
@@ -136,7 +138,7 @@ export default function DiaristasManagement({
                 <button
                   onClick={() => {
                     onTogglePaid(booking.id);
-                    showSuccess("Status de pagamento updated!");
+                    showSuccess("Status de pagamento atualizado!");
                   }}
                   className={`rounded-full px-2.5 py-0.5 text-xs font-semibold transition-all ${
                     booking.paid 
@@ -164,6 +166,10 @@ export default function DiaristasManagement({
                   {booking.sport}
                 </span>
                 <span className="text-xs text-slate-400">{booking.fieldName}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400">Pagamento:</span>
+                <span className="text-xs font-semibold text-emerald-400">{booking.paymentMethod || 'Pix'}</span>
               </div>
               <div className="flex items-center justify-between p-2.5 bg-slate-950 border border-slate-800 rounded-xl mt-2">
                 <span className="text-xs text-slate-400">Valor da Reserva</span>
@@ -341,16 +347,31 @@ export default function DiaristasManagement({
                   />
                 </div>
 
-                <div className="flex items-center space-x-2 pt-8">
-                  <input
-                    type="checkbox"
-                    id="isPaid"
-                    checked={isPaid}
-                    onChange={(e) => setIsPaid(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-800 text-blue-600 focus:ring-blue-500 bg-slate-950"
-                  />
-                  <Label htmlFor="isPaid" className="text-slate-300 font-semibold cursor-pointer">Já está pago?</Label>
+                <div className="space-y-1">
+                  <Label className="text-slate-300 font-semibold">Forma de Pagamento</Label>
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-950 border-slate-800 text-white">
+                      <SelectItem value="Pix">Pix 📱</SelectItem>
+                      <SelectItem value="Dinheiro">Dinheiro 💵</SelectItem>
+                      <SelectItem value="Cartão de Crédito">Cartão de Crédito 💳</SelectItem>
+                      <SelectItem value="Cartão de Débito">Cartão de Débito 💳</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
+
+              <div className="flex items-center space-x-2 pt-4">
+                <input
+                  type="checkbox"
+                  id="isPaid"
+                  checked={isPaid}
+                  onChange={(e) => setIsPaid(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-800 text-blue-600 focus:ring-blue-500 bg-slate-950"
+                />
+                <Label htmlFor="isPaid" className="text-slate-300 font-semibold cursor-pointer">Já está pago?</Label>
               </div>
 
               <div className="pt-4 flex gap-3 shrink-0">

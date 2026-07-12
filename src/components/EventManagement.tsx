@@ -26,6 +26,7 @@ export default function EventManagement({ eventos, fields, onAddEvento, onDelete
   const [price, setPrice] = useState("");
   const [fieldId, setFieldId] = useState(fields[0]?.id || "");
   const [recurrence, setRecurrence] = useState("once"); // once, weekly, biweekly, monthly_3x, custom
+  const [paymentMethod, setPaymentMethod] = useState("Pix");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +47,8 @@ export default function EventManagement({ eventos, fields, onAddEvento, onDelete
       price: parseFloat(price),
       fieldId,
       fieldName: selectedField ? selectedField.name : "Quadra",
-      recurrence
+      recurrence,
+      paymentMethod
     };
 
     onAddEvento(newEvento);
@@ -110,6 +112,10 @@ export default function EventManagement({ eventos, fields, onAddEvento, onDelete
                    ev.recurrence === 'biweekly' ? 'De 15 em 15 dias' : 
                    ev.recurrence === 'monthly_3x' ? '3 vezes no mês' : 'Personalizado'}
                 </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400">Pagamento:</span>
+                <span className="text-xs font-semibold text-emerald-400">{ev.paymentMethod || 'Pix'}</span>
               </div>
               <div className="flex items-center justify-between p-2.5 bg-slate-950 border border-slate-800 rounded-xl mt-2">
                 <span className="text-xs text-slate-400">Custo / Arrecadação</span>
@@ -248,17 +254,34 @@ export default function EventManagement({ eventos, fields, onAddEvento, onDelete
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="evPrice" className="text-slate-300 font-semibold">Valor / Custo (R$) *</Label>
-                <Input
-                  id="evPrice"
-                  type="number"
-                  placeholder="Ex: 500.00"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  className="rounded-xl border-slate-800 bg-slate-950 text-white"
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="evPrice" className="text-slate-300 font-semibold">Valor / Custo (R$) *</Label>
+                  <Input
+                    id="evPrice"
+                    type="number"
+                    placeholder="Ex: 500.00"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    className="rounded-xl border-slate-800 bg-slate-950 text-white"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-slate-300 font-semibold">Forma de Pagamento</Label>
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-950 border-slate-800 text-white">
+                      <SelectItem value="Pix">Pix 📱</SelectItem>
+                      <SelectItem value="Dinheiro">Dinheiro 💵</SelectItem>
+                      <SelectItem value="Cartão de Crédito">Cartão de Crédito 💳</SelectItem>
+                      <SelectItem value="Cartão de Débito">Cartão de Débito 💳</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="pt-4 flex gap-3 shrink-0">

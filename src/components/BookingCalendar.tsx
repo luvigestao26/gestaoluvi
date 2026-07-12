@@ -72,6 +72,7 @@ export default function BookingCalendar({
   const [endTime, setEndTime] = useState("19:00");
   const [price, setPrice] = useState("");
   const [isPaid, setIsPaid] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("Pix");
 
   // Form states for blocking
   const [blockStartTime, setBlockStartTime] = useState("10:00");
@@ -299,7 +300,8 @@ export default function BookingCalendar({
       date: bookingDate,
       timeSlot: customTimeSlot,
       price: parseFloat(price),
-      paid: isPaid
+      paid: isPaid,
+      paymentMethod
     };
 
     onAddBooking(newBooking);
@@ -748,16 +750,31 @@ export default function BookingCalendar({
                   />
                 </div>
 
-                <div className="flex items-center space-x-2 pt-8">
-                  <input
-                    type="checkbox"
-                    id="isPaid"
-                    checked={isPaid}
-                    onChange={(e) => setIsPaid(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-800 text-blue-600 focus:ring-blue-500 bg-slate-950"
-                  />
-                  <Label htmlFor="isPaid" className="text-slate-300 font-semibold cursor-pointer">Já está pago?</Label>
+                <div className="space-y-1">
+                  <Label className="text-slate-300 font-semibold">Forma de Pagamento</Label>
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-950 border-slate-800 text-white">
+                      <SelectItem value="Pix">Pix 📱</SelectItem>
+                      <SelectItem value="Dinheiro">Dinheiro 💵</SelectItem>
+                      <SelectItem value="Cartão de Crédito">Cartão de Crédito 💳</SelectItem>
+                      <SelectItem value="Cartão de Débito">Cartão de Débito 💳</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
+
+              <div className="flex items-center space-x-2 pt-4">
+                <input
+                  type="checkbox"
+                  id="isPaid"
+                  checked={isPaid}
+                  onChange={(e) => setIsPaid(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-800 text-blue-600 focus:ring-blue-500 bg-slate-950"
+                />
+                <Label htmlFor="isPaid" className="text-slate-300 font-semibold cursor-pointer">Já está pago?</Label>
               </div>
 
               <div className="pt-4 flex gap-3 shrink-0">
