@@ -2,20 +2,15 @@
 
 import React, { useState } from 'react';
 import { 
-  Calendar as CalendarIcon, 
   Clock, 
   Plus, 
-  Check, 
   X, 
   Trash2, 
-  DollarSign, 
-  User, 
-  Activity,
-  Search,
+  Lock, 
+  Unlock, 
   Users,
-  Lock,
-  Unlock,
-  CalendarDays
+  CalendarDays,
+  Award
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +25,7 @@ interface BookingCalendarProps {
   fields: any[];
   blockedSlots: any[];
   mensalistas: any[];
+  eventos: any[];
   onAddBooking: (booking: any) => void;
   onDeleteBooking: (id: string) => void;
   onTogglePaid: (id: string) => void;
@@ -50,6 +46,7 @@ export default function BookingCalendar({
   fields, 
   blockedSlots,
   mensalistas,
+  eventos,
   onAddBooking,
   onDeleteBooking,
   onTogglePaid,
@@ -60,7 +57,6 @@ export default function BookingCalendar({
   const [selectedFieldId, setSelectedFieldId] = useState<string>(fields[0]?.id || "");
   const [isNewBookingOpen, setIsNewBookingOpen] = useState(false);
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
-  const [calendarTab, setCalendarTab] = useState<'diarista' | 'mensalista'>('diarista');
   
   // Form states for booking
   const [customerName, setCustomerName] = useState("");
@@ -85,6 +81,11 @@ export default function BookingCalendar({
   // Filter mensalistas for selected day of week and field
   const activeMensalistas = mensalistas.filter(
     m => m.active && m.fieldId === selectedFieldId && m.dayOfWeek === selectedDayOfWeek
+  );
+
+  // Filter events for selected date and field
+  const activeEventos = eventos.filter(
+    e => e.date === selectedDate && e.fieldId === selectedFieldId
   );
 
   const handleFieldChange = (value: string) => {
@@ -128,13 +129,35 @@ export default function BookingCalendar({
       return;
     }
 
-    // Check if slot is already booked
+    // Check if slot is already booked by a Diarista
     const isAlreadyBooked = bookings.some(
       b => b.date === selectedDate && b.fieldId === selectedFieldId && b.timeSlot === selectedTimeSlot
     );
 
     if (isAlreadyBooked) {
-      showError("Este horário já está reservado!");
+      showError("Este horário já está reservado por um Diarista!");
+      return;
+    }
+
+    // Check if slot is occupied by a Mensalista
+    const isMensalistaOccupied = activeMensalistas.some(m => m.timeSlot === selectedTimeSlot);
+    if (isMensalistaOccupied) {
+      showError("Este horário está reservado para um Mensalista Fixo!");
+      return;
+    }
+
+    // Check if slot is occupied by an Event
+    const isEventOccupied = activeEventos.some(ev => {
+      // Simple check if slot is within event start/end hours
+      const [slotStart] = selectedTimeSlot.split(' - ');
+      const slotHour = parseInt(slotStart.split(':')[0]);
+      const eventStartHour = parseInt(ev.startTime.split(':')[0]);
+      const eventEndHour = parseInt(ev.endTime.split(':')[0]);
+      return slotHour >= eventStartHour && slotHour < eventEndHour;
+    });
+
+    if (isEventOccupied) {
+      showError("Este horário está reservado para um Evento/Torneio!");
       return;
     }
 
@@ -186,30 +209,6 @@ export default function BookingCalendar({
 
   return (
     <div className="space-y-6">
-      {/* Diarista vs Mensalista Tabs */}
-      <div className="flex border-b border-slate-200">
-        <button
-          onClick={() => setCalendarTab('diarista')}
-          className={`px-6 py-3 font-bold text-sm border-b-2 transition-all ${
-            calendarTab === 'diarista' 
-              ? 'border-emerald-600 text-emerald-600' 
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          Diaristas (Reservas Avulsas)
-        </button>
-        <button
-          onClick={() => setCalendarTab('mensalista')}
-          className={`px-6 py-3 font-bold text-sm border-b-2 transition-all ${
-            calendarTab === 'mensalista' 
-              ? 'border-emerald-600 text-emerald-600' 
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          Mensalistas (Horários Fixos)
-        </button>
-      </div>
-
       {/* Header Controls */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white p-4 rounded-2xl shadow-sm">
         <div className="flex flex-wrap gap-3 items-center">
@@ -264,15 +263,15 @@ export default function BookingCalendar({
           <CardHeader className="border-b border-slate-100 pb-4">
             <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <Clock className="text-emerald-600" size={20} />
-              Grade de Horários ({calendarTab === 'diarista' ? 'Diaristas' : 'Mensalistas'})
+              Grade de Horários Integrada
             </CardTitle>
             <CardDescription>
-              Horários para o dia {selectedDate.split('-').reverse().join('/')}
+              Visualização em tempo real para o dia {selectedDate.split('-').reverse().join('/')}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0 divide-y divide-slate-100">
             {TIME_SLOTS.map(slot => {
-              // Check if slot is blocked
+              // 1. Check if slot is blocked
               const block = blockedSlots.find(b => {
                 if (b.fieldId !== selectedFieldId || b.timeSlot !== slot) return false;
                 if (b.type === 'single' && b.date === selectedDate) return true;
@@ -284,11 +283,20 @@ export default function BookingCalendar({
                 return false;
               });
 
-              // Check if slot has a booking (Diarista)
+              // 2. Check if slot has a Diarista booking
               const booking = filteredBookings.find(b => b.timeSlot === slot);
 
-              // Check if slot has a mensalista
+              // 3. Check if slot has a Mensalista
               const mensalista = activeMensalistas.find(m => m.timeSlot === slot);
+
+              // 4. Check if slot has an Event
+              const event = activeEventos.find(ev => {
+                const [slotStart] = slot.split(' - ');
+                const slotHour = parseInt(slotStart.split(':')[0]);
+                const eventStartHour = parseInt(ev.startTime.split(':')[0]);
+                const eventEndHour = parseInt(ev.endTime.split(':')[0]);
+                return slotHour >= eventStartHour && slotHour < eventEndHour;
+              });
 
               return (
                 <div key={slot} className="flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors">
@@ -300,32 +308,29 @@ export default function BookingCalendar({
                         <Lock size={14} />
                         <span>Bloqueado pelo Administrador {block.type === 'monthly' && '(Mensal/Anual)'}</span>
                       </div>
-                    ) : calendarTab === 'diarista' ? (
-                      booking ? (
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
-                            {booking.sport}
-                          </span>
-                          <span className="text-sm font-bold text-slate-800">{booking.customerName}</span>
-                          {booking.customerPhone && (
-                            <span className="text-xs text-slate-400">({booking.customerPhone})</span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-sm text-slate-400 italic">Disponível</span>
-                      )
+                    ) : event ? (
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                          🏆 Evento: {event.title}
+                        </span>
+                        <span className="text-xs text-slate-400">({event.description || "Sem detalhes"})</span>
+                      </div>
+                    ) : mensalista ? (
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
+                          👤 Mensalista: {mensalista.customerName}
+                        </span>
+                        <span className="text-xs text-slate-400">({mensalista.sport})</span>
+                      </div>
+                    ) : booking ? (
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+                          ⚽ Diarista: {booking.customerName}
+                        </span>
+                        <span className="text-xs text-slate-400">({booking.sport})</span>
+                      </div>
                     ) : (
-                      mensalista ? (
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
-                            {mensalista.sport}
-                          </span>
-                          <span className="text-sm font-bold text-slate-800">{mensalista.customerName}</span>
-                          <span className="text-xs text-slate-400">(Mensalista Fixo)</span>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-slate-400 italic">Sem mensalista fixo neste dia</span>
-                      )
+                      <span className="text-sm text-slate-400 italic">Disponível</span>
                     )}
                   </div>
 
@@ -343,49 +348,47 @@ export default function BookingCalendar({
                         <Unlock size={14} />
                         Desbloquear
                       </Button>
-                    ) : calendarTab === 'diarista' ? (
-                      booking ? (
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => onTogglePaid(booking.id)}
-                            className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
-                              booking.paid 
-                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' 
-                                : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                            }`}
-                          >
-                            {booking.paid ? 'Pago' : 'Pendente'}
-                          </button>
-                          <button
-                            onClick={() => {
-                              if(confirm("Deseja realmente cancelar este agendamento?")) {
-                                onDeleteBooking(booking.id);
-                                showSuccess("Agendamento cancelado!");
-                              }
-                            }}
-                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setSelectedTimeSlot(slot);
-                            const field = fields.find(f => f.id === selectedFieldId);
-                            if (field) {
-                              setSelectedSport(field.sport);
-                              setPrice(field.pricePerHour.toString());
-                            }
-                            setIsNewBookingOpen(true);
-                          }}
-                          className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg"
+                    ) : !event && !mensalista && !booking ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setSelectedTimeSlot(slot);
+                          const field = fields.find(f => f.id === selectedFieldId);
+                          if (field) {
+                            setSelectedSport(field.sport);
+                            setPrice(field.pricePerHour.toString());
+                          }
+                          setIsNewBookingOpen(true);
+                        }}
+                        className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg"
+                      >
+                        Reservar
+                      </Button>
+                    ) : booking ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => onTogglePaid(booking.id)}
+                          className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                            booking.paid 
+                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' 
+                              : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                          }`}
                         >
-                          Reservar
-                        </Button>
-                      )
+                          {booking.paid ? 'Pago' : 'Pendente'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            if(confirm("Deseja realmente cancelar este agendamento?")) {
+                              onDeleteBooking(booking.id);
+                              showSuccess("Agendamento cancelado!");
+                            }
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     ) : null}
                   </div>
                 </div>
@@ -403,20 +406,16 @@ export default function BookingCalendar({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-                <span className="text-sm text-slate-600">Total de Reservas</span>
+                <span className="text-sm text-slate-600">Diaristas Reservados</span>
                 <span className="text-lg font-bold text-slate-800">{filteredBookings.length}</span>
               </div>
               <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-                <span className="text-sm text-slate-600">Receita Estimada</span>
-                <span className="text-lg font-bold text-emerald-600">
-                  R$ {filteredBookings.reduce((sum, b) => sum + b.price, 0).toFixed(2)}
-                </span>
+                <span className="text-sm text-slate-600">Mensalistas Ativos Hoje</span>
+                <span className="text-lg font-bold text-blue-600">{activeMensalistas.length}</span>
               </div>
               <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-                <span className="text-sm text-slate-600">Confirmados (Pagos)</span>
-                <span className="text-lg font-bold text-blue-600">
-                  {filteredBookings.filter(b => b.paid).length}
-                </span>
+                <span className="text-sm text-slate-600">Eventos Hoje</span>
+                <span className="text-lg font-bold text-amber-600">{activeEventos.length}</span>
               </div>
             </CardContent>
           </Card>

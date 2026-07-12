@@ -4,13 +4,13 @@ import React, { useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import DashboardOverview from '@/components/DashboardOverview';
 import BookingCalendar from '@/components/BookingCalendar';
-import CustomerManagement from '@/components/CustomerManagement';
-import FinancialManagement from '@/components/FinancialManagement';
-import SettingsManagement from '@/components/SettingsManagement';
 import MensalistaManagement from '@/components/MensalistaManagement';
 import EventManagement from '@/components/EventManagement';
 import AccountsPayableManagement from '@/components/AccountsPayableManagement';
-import AdminManagement from '@/components/AdminManagement';
+import EstoqueManagement from '@/components/EstoqueManagement';
+import VendasManagement from '@/components/VendasManagement';
+import DiaristasManagement from '@/components/DiaristasManagement';
+import RelatoriosManagement from '@/components/RelatoriosManagement';
 import WhatsAppSimulator from '@/components/WhatsAppSimulator';
 import { MadeWithDyad } from "@/components/made-with-dyad";
 
@@ -61,9 +61,14 @@ const INITIAL_ACCOUNTS_PAYABLE = [
   { id: '2', description: 'Manutenção dos Refletores', amount: 300, dueDate: new Date().toISOString().split('T')[0], category: 'Manutenção', status: 'paid' }
 ];
 
-const INITIAL_ADMINS = [
-  { id: '1', name: 'Administrador Master', email: 'admin@arenagestao.com', role: 'master' },
-  { id: '2', name: 'Lucas Gerente', email: 'lucas@arenagestao.com', role: 'manager' }
+const INITIAL_PRODUCTS = [
+  { id: '1', name: 'Água Mineral 500ml', category: 'Bebidas', quantity: 120, minQuantity: 20, costPrice: 1.20, salePrice: 3.50 },
+  { id: '2', name: 'Refrigerante Lata', category: 'Bebidas', quantity: 80, minQuantity: 15, costPrice: 2.00, salePrice: 5.00 },
+  { id: '3', name: 'Grip para Raquete', category: 'Acessórios', quantity: 15, minQuantity: 5, costPrice: 5.00, salePrice: 15.00 }
+];
+
+const INITIAL_SALES = [
+  { id: '1', productId: '1', productName: 'Água Mineral 500ml', quantity: 2, total: 7.00, paymentMethod: 'Pix', customerName: 'Carlos Eduardo', date: new Date().toISOString().split('T')[0] }
 ];
 
 export default function Index() {
@@ -77,21 +82,9 @@ export default function Index() {
   const [mensalistas, setMensalistas] = useState<any[]>(INITIAL_MENSALISTAS);
   const [eventos, setEventos] = useState<any[]>(INITIAL_EVENTOS);
   const [accountsPayable, setAccountsPayable] = useState<any[]>(INITIAL_ACCOUNTS_PAYABLE);
-  const [admins, setAdmins] = useState<any[]>(INITIAL_ADMINS);
+  const [products, setProducts] = useState<any[]>(INITIAL_PRODUCTS);
+  const [sales, setSales] = useState<any[]>(INITIAL_SALES);
   const [whatsappMessage, setWhatsappMessage] = useState<string | null>(null);
-
-  // Customer Handlers
-  const handleAddCustomer = (newCustomer: any) => {
-    setCustomers([...customers, newCustomer]);
-  };
-
-  const handleDeleteCustomer = (id: string) => {
-    setCustomers(customers.filter(c => c.id !== id));
-  };
-
-  const handleUpdateCustomer = (updatedCustomer: any) => {
-    setCustomers(customers.map(c => c.id === updatedCustomer.id ? updatedCustomer : c));
-  };
 
   // Booking Handlers
   const handleAddBooking = (newBooking: any) => {
@@ -124,7 +117,6 @@ export default function Index() {
     setBookings(bookings.map(b => {
       if (b.id === id) {
         const updatedPaid = !b.paid;
-        // If toggled to paid, add transaction
         if (updatedPaid) {
           const newTransaction = {
             id: Date.now().toString() + '-t',
@@ -136,7 +128,6 @@ export default function Index() {
           };
           setTransactions(prev => [newTransaction, ...prev]);
 
-          // Trigger WhatsApp Simulation for Payment Confirmation
           const formattedDate = b.date.split('-').reverse().join('/');
           const msg = `Olá, *${b.customerName}*!\n\nConfirmamos o recebimento do seu pagamento para a reserva do dia *${formattedDate}* às *${b.timeSlot}* na *${b.fieldName}*! 💵✅\n\nTudo pronto para o seu jogo. Nos vemos na *${settings.name}*! ⚽🎾`;
           setWhatsappMessage(msg);
@@ -172,7 +163,6 @@ export default function Index() {
   // Event Handlers
   const handleAddEvento = (newEvento: any) => {
     setEventos([...eventos, newEvento]);
-    // Automatically add to transactions as income
     const newTransaction = {
       id: Date.now().toString() + '-ev',
       description: `Evento: ${newEvento.title}`,
@@ -201,7 +191,6 @@ export default function Index() {
     setAccountsPayable(accountsPayable.map(a => {
       if (a.id === id) {
         const updatedStatus = a.status === 'paid' ? 'pending' : 'paid';
-        // If toggled to paid, add to transactions as expense
         if (updatedStatus === 'paid') {
           const newTransaction = {
             id: Date.now().toString() + '-ap',
@@ -219,22 +208,55 @@ export default function Index() {
     }));
   };
 
-  // Admin Handlers
-  const handleAddAdmin = (newAdmin: any) => {
-    setAdmins([...admins, newAdmin]);
+  // Estoque Handlers
+  const handleAddProduct = (newProduct: any) => {
+    setProducts([...products, newProduct]);
   };
 
-  const handleDeleteAdmin = (id: string) => {
-    setAdmins(admins.filter(a => a.id !== id));
+  const handleDeleteProduct = (id: string) => {
+    setProducts(products.filter(p => p.id !== id));
   };
 
-  // Transaction Handlers
-  const handleAddTransaction = (newTransaction: any) => {
-    setTransactions([newTransaction, ...transactions]);
+  const handleUpdateProduct = (updatedProduct: any) => {
+    setProducts(products.map(p => p.id === updatedProduct.id ? updatedProduct : p));
   };
 
-  const handleDeleteTransaction = (id: string) => {
-    setTransactions(transactions.filter(t => t.id !== id));
+  // Vendas Handlers
+  const handleAddSale = (newSale: any) => {
+    setSales([newSale, ...sales]);
+    
+    // Deduct from stock
+    setProducts(prevProducts => prevProducts.map(p => {
+      if (p.id === newSale.productId) {
+        return { ...p, quantity: p.quantity - newSale.quantity };
+      }
+      return p;
+    }));
+
+    // Add to transactions
+    const newTransaction = {
+      id: Date.now().toString() + '-sale',
+      description: `Venda: ${newSale.productName} (${newSale.quantity}x)`,
+      amount: newSale.total,
+      type: 'income',
+      category: 'Bar / Lanchonete',
+      date: newSale.date
+    };
+    setTransactions(prev => [newTransaction, ...prev]);
+  };
+
+  const handleDeleteSale = (id: string) => {
+    const sale = sales.find(s => s.id === id);
+    if (sale) {
+      // Return to stock
+      setProducts(prevProducts => prevProducts.map(p => {
+        if (p.id === sale.productId) {
+          return { ...p, quantity: p.quantity + sale.quantity };
+        }
+        return p;
+      }));
+    }
+    setSales(sales.filter(s => s.id !== id));
   };
 
   return (
@@ -267,6 +289,24 @@ export default function Index() {
             />
           )}
 
+          {activeTab === 'estoque' && (
+            <EstoqueManagement 
+              products={products}
+              onAddProduct={handleAddProduct}
+              onDeleteProduct={handleDeleteProduct}
+              onUpdateProduct={handleUpdateProduct}
+            />
+          )}
+
+          {activeTab === 'vendas' && (
+            <VendasManagement 
+              sales={sales}
+              products={products}
+              onAddSale={handleAddSale}
+              onDeleteSale={handleDeleteSale}
+            />
+          )}
+
           {activeTab === 'calendar' && (
             <BookingCalendar 
               bookings={bookings} 
@@ -274,6 +314,7 @@ export default function Index() {
               fields={fields}
               blockedSlots={blockedSlots}
               mensalistas={mensalistas}
+              eventos={eventos}
               onAddBooking={handleAddBooking}
               onDeleteBooking={handleDeleteBooking}
               onTogglePaid={handleTogglePaid}
@@ -292,30 +333,20 @@ export default function Index() {
             />
           )}
 
+          {activeTab === 'diaristas' && (
+            <DiaristasManagement 
+              bookings={bookings}
+              onDeleteBooking={handleDeleteBooking}
+              onTogglePaid={handleTogglePaid}
+            />
+          )}
+
           {activeTab === 'eventos' && (
             <EventManagement 
               eventos={eventos}
               fields={fields}
               onAddEvento={handleAddEvento}
               onDeleteEvento={handleDeleteEvento}
-            />
-          )}
-
-          {activeTab === 'customers' && (
-            <CustomerManagement 
-              customers={customers}
-              bookings={bookings}
-              onAddCustomer={handleAddCustomer}
-              onDeleteCustomer={handleDeleteCustomer}
-              onUpdateCustomer={handleUpdateCustomer}
-            />
-          )}
-
-          {activeTab === 'financial' && (
-            <FinancialManagement 
-              transactions={transactions}
-              onAddTransaction={handleAddTransaction}
-              onDeleteTransaction={handleDeleteTransaction}
             />
           )}
 
@@ -328,18 +359,12 @@ export default function Index() {
             />
           )}
 
-          {activeTab === 'admins' && (
-            <AdminManagement 
-              admins={admins}
-              onAddAdmin={handleAddAdmin}
-              onDeleteAdmin={handleDeleteAdmin}
-            />
-          )}
-
-          {activeTab === 'settings' && (
-            <SettingsManagement 
-              arenaSettings={settings}
-              onSaveSettings={setSettings}
+          {activeTab === 'relatorios' && (
+            <RelatoriosManagement 
+              bookings={bookings}
+              transactions={transactions}
+              sales={sales}
+              accountsPayable={accountsPayable}
             />
           )}
         </div>

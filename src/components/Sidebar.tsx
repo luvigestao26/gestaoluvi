@@ -4,13 +4,14 @@ import React from 'react';
 import { 
   LayoutDashboard, 
   Calendar, 
-  Users, 
   DollarSign, 
-  Settings,
   Award,
   CreditCard,
-  ShieldAlert,
-  UserCheck
+  UserCheck,
+  Package,
+  ShoppingCart,
+  BarChart3,
+  Users
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -20,15 +21,15 @@ interface SidebarProps {
 
 export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const menuItems = [
-    { id: 'dashboard', label: 'Painel Geral', icon: LayoutDashboard },
-    { id: 'calendar', label: 'Agendamentos', icon: Calendar },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'estoque', label: 'Estoque', icon: Package },
+    { id: 'vendas', label: 'Vendas', icon: ShoppingCart },
+    { id: 'calendar', label: 'Agenda do Campo', icon: Calendar },
     { id: 'mensalistas', label: 'Mensalistas', icon: UserCheck },
+    { id: 'diaristas', label: 'Diaristas', icon: Users },
     { id: 'eventos', label: 'Eventos', icon: Award },
-    { id: 'customers', label: 'Clientes', icon: Users },
-    { id: 'financial', label: 'Financeiro', icon: DollarSign },
     { id: 'payable', label: 'Contas a Pagar', icon: CreditCard },
-    { id: 'admins', label: 'Administradores', icon: ShieldAlert },
-    { id: 'settings', label: 'Configurações', icon: Settings },
+    { id: 'relatorios', label: 'Relatórios', icon: BarChart3 },
   ];
 
   return (
