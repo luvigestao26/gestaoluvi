@@ -62,7 +62,8 @@ export default function BookingCalendar({
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [selectedSport, setSelectedSport] = useState("Futebol");
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState("");
+  const [startTime, setStartTime] = useState("18:00");
+  const [endTime, setEndTime] = useState("19:00");
   const [price, setPrice] = useState("");
   const [isPaid, setIsPaid] = useState(false);
 
@@ -107,14 +108,16 @@ export default function BookingCalendar({
 
   const handleSubmitBooking = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerName || !selectedTimeSlot || !selectedFieldId || !price) {
+    if (!customerName || !startTime || !endTime || !selectedFieldId || !price) {
       showError("Por favor, preencha todos os campos obrigatórios.");
       return;
     }
 
+    const customTimeSlot = `${startTime} - ${endTime}`;
+
     // Check if slot is blocked
     const isBlocked = blockedSlots.some(b => {
-      if (b.fieldId !== selectedFieldId || b.timeSlot !== selectedTimeSlot) return false;
+      if (b.fieldId !== selectedFieldId || b.timeSlot !== customTimeSlot) return false;
       if (b.type === 'single' && b.date === selectedDate) return true;
       if (b.type === 'monthly') {
         const [bYear, bMonth] = b.date.split('-');
@@ -129,38 +132,6 @@ export default function BookingCalendar({
       return;
     }
 
-    // Check if slot is already booked by a Diarista
-    const isAlreadyBooked = bookings.some(
-      b => b.date === selectedDate && b.fieldId === selectedFieldId && b.timeSlot === selectedTimeSlot
-    );
-
-    if (isAlreadyBooked) {
-      showError("Este horário já está reservado por um Diarista!");
-      return;
-    }
-
-    // Check if slot is occupied by a Mensalista
-    const isMensalistaOccupied = activeMensalistas.some(m => m.timeSlot === selectedTimeSlot);
-    if (isMensalistaOccupied) {
-      showError("Este horário está reservado para um Mensalista Fixo!");
-      return;
-    }
-
-    // Check if slot is occupied by an Event
-    const isEventOccupied = activeEventos.some(ev => {
-      // Simple check if slot is within event start/end hours
-      const [slotStart] = selectedTimeSlot.split(' - ');
-      const slotHour = parseInt(slotStart.split(':')[0]);
-      const eventStartHour = parseInt(ev.startTime.split(':')[0]);
-      const eventEndHour = parseInt(ev.endTime.split(':')[0]);
-      return slotHour >= eventStartHour && slotHour < eventEndHour;
-    });
-
-    if (isEventOccupied) {
-      showError("Este horário está reservado para um Evento/Torneio!");
-      return;
-    }
-
     const field = fields.find(f => f.id === selectedFieldId);
 
     const newBooking = {
@@ -171,7 +142,7 @@ export default function BookingCalendar({
       fieldName: field ? field.name : "Quadra",
       sport: selectedSport,
       date: selectedDate,
-      timeSlot: selectedTimeSlot,
+      timeSlot: customTimeSlot,
       price: parseFloat(price),
       paid: isPaid
     };
@@ -182,7 +153,6 @@ export default function BookingCalendar({
     // Reset form
     setCustomerName("");
     setCustomerPhone("");
-    setSelectedTimeSlot("");
     setIsNewBookingOpen(false);
   };
 
@@ -210,25 +180,25 @@ export default function BookingCalendar({
   return (
     <div className="space-y-6">
       {/* Header Controls */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white p-4 rounded-2xl shadow-sm">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm">
         <div className="flex flex-wrap gap-3 items-center">
           <div className="flex flex-col">
-            <span className="text-xs font-semibold text-slate-500 mb-1">Data</span>
+            <span className="text-xs font-semibold text-slate-400 mb-1">Data</span>
             <Input 
               type="date" 
               value={selectedDate} 
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-44 rounded-xl border-slate-200 focus:ring-emerald-500"
+              className="w-44 rounded-xl border-slate-800 bg-slate-950 text-white focus:ring-blue-500"
             />
           </div>
 
           <div className="flex flex-col">
-            <span className="text-xs font-semibold text-slate-500 mb-1">Quadra</span>
+            <span className="text-xs font-semibold text-slate-400 mb-1">Quadra</span>
             <Select value={selectedFieldId} onValueChange={handleFieldChange}>
-              <SelectTrigger className="w-48 rounded-xl border-slate-200">
+              <SelectTrigger className="w-48 rounded-xl border-slate-800 bg-slate-950 text-white">
                 <SelectValue placeholder="Selecione a quadra" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-slate-950 border-slate-800 text-white">
                 {fields.map(f => (
                   <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
                 ))}
@@ -241,14 +211,14 @@ export default function BookingCalendar({
           <Button 
             onClick={() => setIsBlockModalOpen(true)}
             variant="outline"
-            className="border-rose-200 text-rose-600 hover:bg-rose-50 rounded-xl px-4 py-2.5 flex items-center gap-2"
+            className="border-rose-900 text-rose-400 hover:bg-rose-950/30 rounded-xl px-4 py-2.5 flex items-center gap-2"
           >
             <Lock size={18} />
             Bloquear Horário
           </Button>
           <Button 
             onClick={() => setIsNewBookingOpen(true)}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-4 py-2.5 flex items-center gap-2"
+            className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2.5 flex items-center gap-2"
           >
             <Plus size={18} />
             Novo Agendamento
@@ -259,17 +229,17 @@ export default function BookingCalendar({
       {/* Main Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Time Slots List */}
-        <Card className="lg:col-span-2 border-none shadow-md bg-white">
-          <CardHeader className="border-b border-slate-100 pb-4">
-            <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <Clock className="text-emerald-600" size={20} />
+        <Card className="lg:col-span-2 border-slate-800 shadow-md bg-slate-900 text-white">
+          <CardHeader className="border-b border-slate-800 pb-4">
+            <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
+              <Clock className="text-blue-400" size={20} />
               Grade de Horários Integrada
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-slate-400">
               Visualização em tempo real para o dia {selectedDate.split('-').reverse().join('/')}
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-0 divide-y divide-slate-100">
+          <CardContent className="p-0 divide-y divide-slate-800">
             {TIME_SLOTS.map(slot => {
               // 1. Check if slot is blocked
               const block = blockedSlots.find(b => {
@@ -299,38 +269,38 @@ export default function BookingCalendar({
               });
 
               return (
-                <div key={slot} className="flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors">
+                <div key={slot} className="flex items-center justify-between p-4 hover:bg-slate-950/50 transition-colors">
                   <div className="flex items-center gap-4">
-                    <span className="text-sm font-semibold text-slate-600 w-28">{slot}</span>
+                    <span className="text-sm font-semibold text-slate-300 w-28">{slot}</span>
                     
                     {block ? (
-                      <div className="flex items-center gap-2 text-rose-600 font-semibold">
+                      <div className="flex items-center gap-2 text-rose-400 font-semibold">
                         <Lock size={14} />
                         <span>Bloqueado pelo Administrador {block.type === 'monthly' && '(Mensal/Anual)'}</span>
                       </div>
                     ) : event ? (
                       <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                        <span className="inline-flex items-center rounded-full bg-amber-950 text-amber-400 border border-amber-900 px-2.5 py-0.5 text-xs font-semibold">
                           🏆 Evento: {event.title}
                         </span>
                         <span className="text-xs text-slate-400">({event.description || "Sem detalhes"})</span>
                       </div>
                     ) : mensalista ? (
                       <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
+                        <span className="inline-flex items-center rounded-full bg-blue-950 text-blue-400 border border-blue-900 px-2.5 py-0.5 text-xs font-semibold">
                           👤 Mensalista: {mensalista.customerName}
                         </span>
                         <span className="text-xs text-slate-400">({mensalista.sport})</span>
                       </div>
                     ) : booking ? (
                       <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+                        <span className="inline-flex items-center rounded-full bg-emerald-950 text-emerald-400 border border-emerald-900 px-2.5 py-0.5 text-xs font-semibold">
                           ⚽ Diarista: {booking.customerName}
                         </span>
                         <span className="text-xs text-slate-400">({booking.sport})</span>
                       </div>
                     ) : (
-                      <span className="text-sm text-slate-400 italic">Disponível</span>
+                      <span className="text-sm text-slate-500 italic">Disponível</span>
                     )}
                   </div>
 
@@ -343,7 +313,7 @@ export default function BookingCalendar({
                           onUnblockSlot(block.id);
                           showSuccess("Horário desbloqueado!");
                         }}
-                        className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg flex items-center gap-1"
+                        className="text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 rounded-lg flex items-center gap-1"
                       >
                         <Unlock size={14} />
                         Desbloquear
@@ -353,15 +323,12 @@ export default function BookingCalendar({
                         size="sm"
                         variant="ghost"
                         onClick={() => {
-                          setSelectedTimeSlot(slot);
-                          const field = fields.find(f => f.id === selectedFieldId);
-                          if (field) {
-                            setSelectedSport(field.sport);
-                            setPrice(field.pricePerHour.toString());
-                          }
+                          const [start, end] = slot.split(' - ');
+                          setStartTime(start);
+                          setEndTime(end);
                           setIsNewBookingOpen(true);
                         }}
-                        className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg"
+                        className="text-blue-400 hover:text-blue-300 hover:bg-blue-950/30 rounded-lg"
                       >
                         Reservar
                       </Button>
@@ -371,8 +338,8 @@ export default function BookingCalendar({
                           onClick={() => onTogglePaid(booking.id)}
                           className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
                             booking.paid 
-                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' 
-                              : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                              ? 'bg-emerald-950 text-emerald-400 border border-emerald-900 hover:bg-emerald-900/50' 
+                              : 'bg-amber-950 text-amber-400 border border-amber-900 hover:bg-amber-900/50'
                           }`}
                         >
                           {booking.paid ? 'Pago' : 'Pendente'}
@@ -384,7 +351,7 @@ export default function BookingCalendar({
                               showSuccess("Agendamento cancelado!");
                             }
                           }}
-                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-950/30 rounded-lg transition-colors"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -399,23 +366,23 @@ export default function BookingCalendar({
 
         {/* Quick Stats & Info */}
         <div className="space-y-6">
-          <Card className="border-none shadow-md bg-white">
+          <Card className="border-slate-800 shadow-md bg-slate-900 text-white">
             <CardHeader>
-              <CardTitle className="text-lg font-bold text-slate-800">Resumo do Dia</CardTitle>
-              <CardDescription>Estatísticas rápidas para a data selecionada</CardDescription>
+              <CardTitle className="text-lg font-bold text-white">Resumo do Dia</CardTitle>
+              <CardDescription className="text-slate-400">Estatísticas rápidas para a data selecionada</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-                <span className="text-sm text-slate-600">Diaristas Reservados</span>
-                <span className="text-lg font-bold text-slate-800">{filteredBookings.length}</span>
+              <div className="flex justify-between items-center p-3 bg-slate-950 border border-slate-800 rounded-xl">
+                <span className="text-sm text-slate-400">Diaristas Reservados</span>
+                <span className="text-lg font-bold text-white">{filteredBookings.length}</span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-                <span className="text-sm text-slate-600">Mensalistas Ativos Hoje</span>
-                <span className="text-lg font-bold text-blue-600">{activeMensalistas.length}</span>
+              <div className="flex justify-between items-center p-3 bg-slate-950 border border-slate-800 rounded-xl">
+                <span className="text-sm text-slate-400">Mensalistas Ativos Hoje</span>
+                <span className="text-lg font-bold text-blue-400">{activeMensalistas.length}</span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-                <span className="text-sm text-slate-600">Eventos Hoje</span>
-                <span className="text-lg font-bold text-amber-600">{activeEventos.length}</span>
+              <div className="flex justify-between items-center p-3 bg-slate-950 border border-slate-800 rounded-xl">
+                <span className="text-sm text-slate-400">Eventos Hoje</span>
+                <span className="text-lg font-bold text-amber-400">{activeEventos.length}</span>
               </div>
             </CardContent>
           </Card>
@@ -425,11 +392,11 @@ export default function BookingCalendar({
       {/* Block Slot Modal */}
       {isBlockModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="bg-gradient-to-r from-rose-600 to-red-500 p-6 text-white flex justify-between items-center">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-gradient-to-r from-slate-950 to-slate-900 p-6 text-white flex justify-between items-center border-b border-slate-800">
               <div>
                 <h3 className="text-xl font-bold">Bloquear Horário</h3>
-                <p className="text-xs text-rose-100 mt-1">Impeça reservas neste horário específico</p>
+                <p className="text-xs text-slate-400 mt-1">Impeça reservas neste horário específico</p>
               </div>
               <button onClick={() => setIsBlockModalOpen(false)} className="p-1.5 rounded-full bg-white/10 hover:bg-white/20">
                 <X size={20} />
@@ -438,12 +405,12 @@ export default function BookingCalendar({
 
             <form onSubmit={handleBlockSlotSubmit} className="p-6 space-y-4">
               <div className="space-y-1">
-                <Label className="text-slate-700 font-semibold">Horário para Bloquear *</Label>
+                <Label className="text-slate-300 font-semibold">Horário para Bloquear *</Label>
                 <Select value={blockTimeSlot} onValueChange={setBlockTimeSlot}>
-                  <SelectTrigger className="rounded-xl border-slate-200">
+                  <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
                     <SelectValue placeholder="Selecione o horário" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-slate-950 border-slate-800 text-white">
                     {TIME_SLOTS.map(slot => (
                       <SelectItem key={slot} value={slot}>{slot}</SelectItem>
                     ))}
@@ -452,12 +419,12 @@ export default function BookingCalendar({
               </div>
 
               <div className="space-y-1">
-                <Label className="text-slate-700 font-semibold">Tipo de Bloqueio</Label>
+                <Label className="text-slate-300 font-semibold">Tipo de Bloqueio</Label>
                 <Select value={blockType} onValueChange={(v: any) => setBlockType(v)}>
-                  <SelectTrigger className="rounded-xl border-slate-200">
+                  <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-slate-950 border-slate-800 text-white">
                     <SelectItem value="single">Apenas nesta data específica</SelectItem>
                     <SelectItem value="monthly">Bloqueio Mensal / Anual (Recorrente)</SelectItem>
                   </SelectContent>
@@ -469,7 +436,7 @@ export default function BookingCalendar({
                   type="button"
                   variant="outline"
                   onClick={() => setIsBlockModalOpen(false)}
-                  className="flex-1 rounded-xl border-slate-200"
+                  className="flex-1 rounded-xl border-slate-800 bg-slate-950 text-white"
                 >
                   Cancelar
                 </Button>
@@ -488,11 +455,11 @@ export default function BookingCalendar({
       {/* New Booking Modal */}
       {isNewBookingOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="bg-gradient-to-r from-emerald-600 to-teal-500 p-6 text-white flex justify-between items-center">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-gradient-to-r from-slate-950 to-slate-900 p-6 text-white flex justify-between items-center border-b border-slate-800">
               <div>
                 <h3 className="text-xl font-bold">Novo Agendamento</h3>
-                <p className="text-xs text-emerald-100 mt-1">Preencha os dados para reservar a quadra</p>
+                <p className="text-xs text-slate-400 mt-1">Preencha os dados para reservar a quadra</p>
               </div>
               <button 
                 onClick={() => setIsNewBookingOpen(false)}
@@ -505,15 +472,15 @@ export default function BookingCalendar({
             <form onSubmit={handleSubmitBooking} className="p-6 space-y-4">
               {/* Quick Select Existing Customer */}
               <div className="space-y-1">
-                <Label className="text-slate-700 font-semibold flex items-center gap-1.5">
-                  <Users size={16} className="text-emerald-600" />
+                <Label className="text-slate-300 font-semibold flex items-center gap-1.5">
+                  <Users size={16} className="text-blue-400" />
                   Selecionar Cliente Cadastrado
                 </Label>
                 <Select onValueChange={handleSelectExistingCustomer}>
-                  <SelectTrigger className="rounded-xl border-slate-200">
+                  <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
                     <SelectValue placeholder="Escolha um cliente existente (opcional)" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-slate-950 border-slate-800 text-white">
                     {customers.map(c => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.name} ({c.phone})
@@ -523,39 +490,39 @@ export default function BookingCalendar({
                 </Select>
               </div>
 
-              <div className="border-t border-slate-100 my-2 pt-2" />
+              <div className="border-t border-slate-800 my-2 pt-2" />
 
               <div className="space-y-1">
-                <Label htmlFor="customerName" className="text-slate-700 font-semibold">Nome do Cliente *</Label>
+                <Label htmlFor="customerName" className="text-slate-300 font-semibold">Nome do Cliente *</Label>
                 <Input
                   id="customerName"
                   placeholder="Ex: João Silva"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className="rounded-xl border-slate-200"
+                  className="rounded-xl border-slate-800 bg-slate-950 text-white"
                   required
                 />
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="customerPhone" className="text-slate-700 font-semibold">Telefone</Label>
+                <Label htmlFor="customerPhone" className="text-slate-300 font-semibold">Telefone</Label>
                 <Input
                   id="customerPhone"
                   placeholder="Ex: (11) 99999-9999"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
-                  className="rounded-xl border-slate-200"
+                  className="rounded-xl border-slate-800 bg-slate-950 text-white"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label className="text-slate-700 font-semibold">Esporte</Label>
+                  <Label className="text-slate-300 font-semibold">Esporte</Label>
                   <Select value={selectedSport} onValueChange={setSelectedSport}>
-                    <SelectTrigger className="rounded-xl border-slate-200">
+                    <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-slate-950 border-slate-800 text-white">
                       <SelectItem value="Futebol">Futebol ⚽</SelectItem>
                       <SelectItem value="Tênis">Tênis 🎾</SelectItem>
                       <SelectItem value="Beach Tennis">Beach Tennis 🏖️</SelectItem>
@@ -566,30 +533,57 @@ export default function BookingCalendar({
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-slate-700 font-semibold">Horário *</Label>
-                  <Select value={selectedTimeSlot} onValueChange={setSelectedTimeSlot}>
-                    <SelectTrigger className="rounded-xl border-slate-200">
-                      <SelectValue placeholder="Selecione" />
+                  <Label className="text-slate-300 font-semibold">Quadra</Label>
+                  <Select value={selectedFieldId} onValueChange={handleFieldChange}>
+                    <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
+                      <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      {TIME_SLOTS.map(slot => (
-                        <SelectItem key={slot} value={slot}>{slot}</SelectItem>
+                    <SelectContent className="bg-slate-950 border-slate-800 text-white">
+                      {fields.map(f => (
+                        <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
+              {/* Custom/Broken Hours Inputs */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label htmlFor="price" className="text-slate-700 font-semibold">Valor (R$) *</Label>
+                  <Label htmlFor="startTime" className="text-slate-300 font-semibold">Hora Início *</Label>
+                  <Input
+                    id="startTime"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="rounded-xl border-slate-800 bg-slate-950 text-white"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="endTime" className="text-slate-300 font-semibold">Hora Fim *</Label>
+                  <Input
+                    id="endTime"
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="rounded-xl border-slate-800 bg-slate-950 text-white"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="price" className="text-slate-300 font-semibold">Valor (R$) *</Label>
                   <Input
                     id="price"
                     type="number"
                     placeholder="120.00"
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
-                    className="rounded-xl border-slate-200"
+                    className="rounded-xl border-slate-800 bg-slate-950 text-white"
                     required
                   />
                 </div>
@@ -600,9 +594,9 @@ export default function BookingCalendar({
                     id="isPaid"
                     checked={isPaid}
                     onChange={(e) => setIsPaid(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                    className="h-4 w-4 rounded border-slate-800 text-blue-600 focus:ring-blue-500 bg-slate-950"
                   />
-                  <Label htmlFor="isPaid" className="text-slate-700 font-semibold cursor-pointer">Já está pago?</Label>
+                  <Label htmlFor="isPaid" className="text-slate-300 font-semibold cursor-pointer">Já está pago?</Label>
                 </div>
               </div>
 
@@ -611,13 +605,13 @@ export default function BookingCalendar({
                   type="button"
                   variant="outline"
                   onClick={() => setIsNewBookingOpen(false)}
-                  className="flex-1 rounded-xl border-slate-200"
+                  className="flex-1 rounded-xl border-slate-800 bg-slate-950 text-white"
                 >
                   Cancelar
                 </Button>
                 <Button
                   type="submit"
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
                 >
                   Confirmar Reserva
                 </Button>

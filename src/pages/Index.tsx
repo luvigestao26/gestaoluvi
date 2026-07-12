@@ -260,20 +260,20 @@ export default function Index() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-slate-950 text-slate-100">
       {/* Sidebar */}
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-h-screen overflow-y-auto">
+      <main className="flex-1 flex flex-col min-h-screen overflow-y-auto bg-slate-950">
         {/* Top Header */}
-        <header className="bg-white border-b border-slate-100 px-8 py-4 flex items-center justify-between sticky top-0 z-30">
+        <header className="bg-slate-900 border-b border-slate-800 px-8 py-4 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-slate-500">Arena Ativa:</span>
-            <span className="text-sm font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg">{settings.name}</span>
+            <span className="text-sm font-semibold text-slate-400">Arena Ativa:</span>
+            <span className="text-sm font-bold text-white bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-lg">{settings.name}</span>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-xs text-slate-400">Última sincronização: Agora mesmo</span>
+            <span className="text-xs text-slate-500">Última sincronização: Agora mesmo</span>
           </div>
         </header>
 
@@ -336,6 +336,9 @@ export default function Index() {
           {activeTab === 'diaristas' && (
             <DiaristasManagement 
               bookings={bookings}
+              fields={fields}
+              customers={customers}
+              onAddBooking={handleAddBooking}
               onDeleteBooking={handleDeleteBooking}
               onTogglePaid={handleTogglePaid}
             />
@@ -376,7 +379,7 @@ export default function Index() {
         />
 
         {/* Footer */}
-        <footer className="mt-auto border-t border-slate-100 bg-white py-4">
+        <footer className="mt-auto border-t border-slate-800 bg-slate-900 py-4">
           <MadeWithDyad />
         </footer>
       </main>
