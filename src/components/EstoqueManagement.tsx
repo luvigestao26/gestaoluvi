@@ -90,14 +90,14 @@ export default function EstoqueManagement({ products, onAddProduct, onDeleteProd
   return (
     <div className="space-y-6">
       {/* Header & Search */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white p-6 rounded-2xl shadow-sm">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-sm">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           <Input
             placeholder="Buscar produto por nome ou categoria..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 rounded-xl border-slate-200"
+            className="pl-10 rounded-xl border-slate-800 bg-slate-950 text-white focus:ring-blue-500"
           />
         </div>
         <Button 
@@ -110,7 +110,7 @@ export default function EstoqueManagement({ products, onAddProduct, onDeleteProd
             setSalePrice("");
             setIsOpen(true);
           }}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-4 py-2.5 flex items-center gap-2"
+          className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2.5 flex items-center gap-2 font-bold"
         >
           <Plus size={18} />
           Novo Produto
@@ -122,20 +122,20 @@ export default function EstoqueManagement({ products, onAddProduct, onDeleteProd
         {filteredProducts.map((product) => {
           const isLowStock = product.quantity <= product.minQuantity;
           return (
-            <Card key={product.id} className="border-none shadow-md bg-white hover:shadow-lg transition-shadow">
+            <Card key={product.id} className="border-slate-800 shadow-md bg-slate-900 text-white hover:border-slate-700 transition-all">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="rounded-full bg-emerald-100 p-2 text-emerald-600">
+                    <div className="rounded-full bg-blue-950 border border-blue-900 p-2 text-blue-400">
                       <Package size={18} />
                     </div>
                     <div>
-                      <CardTitle className="text-base font-bold text-slate-800">{product.name}</CardTitle>
-                      <CardDescription>{product.category}</CardDescription>
+                      <CardTitle className="text-base font-bold text-white">{product.name}</CardTitle>
+                      <CardDescription className="text-slate-400">{product.category}</CardDescription>
                     </div>
                   </div>
                   {isLowStock && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-950 border border-amber-900 px-2 py-0.5 text-xs font-semibold text-amber-400">
                       <AlertTriangle size={12} />
                       Estoque Baixo
                     </span>
@@ -144,23 +144,22 @@ export default function EstoqueManagement({ products, onAddProduct, onDeleteProd
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="bg-slate-50 p-2.5 rounded-xl">
-                    <span className="text-xs text-slate-500 block">Quantidade</span>
-                    <span className="font-bold text-slate-800 text-lg">{product.quantity} un</span>
+                  <div className="bg-slate-950 border border-slate-800 p-2.5 rounded-xl">
+                    <span className="text-xs text-slate-400 block">Quantidade</span>
+                    <span className="font-bold text-white text-lg">{product.quantity} un</span>
                   </div>
-                  <div className="bg-slate-50 p-2.5 rounded-xl">
-                    <span className="text-xs text-slate-500 block">Preço de Venda</span>
-                    <span className="font-bold text-emerald-600 text-lg">R$ {product.salePrice.toFixed(2)}</span>
+                  <div className="bg-slate-950 border border-slate-800 p-2.5 rounded-xl">
+                    <span className="text-xs text-slate-400 block">Preço de Venda</span>
+                    <span className="font-bold text-emerald-400 text-lg">R$ {product.salePrice.toFixed(2)}</span>
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-2 border-t border-slate-100">
+                <div className="flex gap-2 pt-2 border-t border-slate-800">
                   <Button
                     variant="outline"
                     onClick={() => startEdit(product)}
-                    className="flex-1 rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-1.5"
+                    className="flex-1 rounded-xl border-slate-800 bg-slate-950 text-white hover:bg-slate-800 font-bold"
                   >
-                    <Edit size={14} />
                     Editar
                   </Button>
                   <Button
@@ -171,7 +170,7 @@ export default function EstoqueManagement({ products, onAddProduct, onDeleteProd
                         showSuccess("Produto excluído!");
                       }
                     }}
-                    className="rounded-xl text-red-600 hover:text-red-700 hover:bg-red-50 flex items-center justify-center gap-1.5"
+                    className="rounded-xl text-red-400 hover:text-red-300 hover:bg-red-950/30 flex items-center justify-center gap-1.5 font-bold"
                   >
                     <Trash2 size={14} />
                     Excluir
@@ -183,8 +182,8 @@ export default function EstoqueManagement({ products, onAddProduct, onDeleteProd
         })}
 
         {filteredProducts.length === 0 && (
-          <div className="col-span-full text-center py-12 bg-white rounded-2xl shadow-sm">
-            <p className="text-slate-500">Nenhum produto encontrado no estoque.</p>
+          <div className="col-span-full text-center py-12 bg-slate-900 border border-slate-800 rounded-2xl shadow-sm">
+            <p className="text-slate-400">Nenhum produto encontrado no estoque.</p>
           </div>
         )}
       </div>
@@ -192,11 +191,11 @@ export default function EstoqueManagement({ products, onAddProduct, onDeleteProd
       {/* Modal */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="bg-gradient-to-r from-emerald-600 to-teal-500 p-6 text-white flex justify-between items-center">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-gradient-to-r from-slate-950 to-slate-900 p-6 text-white flex justify-between items-center border-b border-slate-800">
               <div>
                 <h3 className="text-xl font-bold">{editingProduct ? 'Editar Produto' : 'Novo Produto'}</h3>
-                <p className="text-xs text-emerald-100 mt-1">Cadastre ou atualize itens do estoque</p>
+                <p className="text-xs text-slate-400 mt-1">Cadastre ou atualize itens do estoque</p>
               </div>
               <button onClick={() => setIsOpen(false)} className="p-1.5 rounded-full bg-white/10 hover:bg-white/20">
                 <X size={20} />
@@ -205,41 +204,41 @@ export default function EstoqueManagement({ products, onAddProduct, onDeleteProd
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div className="space-y-1">
-                <Label htmlFor="prodName" className="text-slate-700 font-semibold">Nome do Produto *</Label>
+                <Label htmlFor="prodName" className="text-slate-300 font-semibold">Nome do Produto *</Label>
                 <Input
                   id="prodName"
                   placeholder="Ex: Água Mineral 500ml"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="rounded-xl border-slate-200"
+                  className="rounded-xl border-slate-800 bg-slate-950 text-white"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label className="text-slate-700 font-semibold">Categoria</Label>
+                  <Label className="text-slate-300 font-semibold">Categoria</Label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950 text-white p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="Bebidas">Bebidas 🥤</option>
-                    <option value="Lanches">Lanches 🍔</option>
-                    <option value="Acessórios">Acessórios 🎾</option>
-                    <option value="Outros">Outros 📦</option>
+                    <option value="Bebidas" className="bg-slate-950 text-white">Bebidas 🥤</option>
+                    <option value="Lanches" className="bg-slate-950 text-white">Lanches 🍔</option>
+                    <option value="Acessórios" className="bg-slate-950 text-white">Acessórios 🎾</option>
+                    <option value="Outros" className="bg-slate-950 text-white">Outros 📦</option>
                   </select>
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="prodQty" className="text-slate-700 font-semibold">Quantidade *</Label>
+                  <Label htmlFor="prodQty" className="text-slate-300 font-semibold">Quantidade *</Label>
                   <Input
                     id="prodQty"
                     type="number"
                     placeholder="Ex: 50"
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
-                    className="rounded-xl border-slate-200"
+                    className="rounded-xl border-slate-800 bg-slate-950 text-white"
                     required
                   />
                 </div>
@@ -247,19 +246,19 @@ export default function EstoqueManagement({ products, onAddProduct, onDeleteProd
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label htmlFor="prodMinQty" className="text-slate-700 font-semibold">Qtd Mínima (Alerta)</Label>
+                  <Label htmlFor="prodMinQty" className="text-slate-300 font-semibold">Qtd Mínima (Alerta)</Label>
                   <Input
                     id="prodMinQty"
                     type="number"
                     placeholder="Ex: 10"
                     value={minQuantity}
                     onChange={(e) => setMinQuantity(e.target.value)}
-                    className="rounded-xl border-slate-200"
+                    className="rounded-xl border-slate-800 bg-slate-950 text-white"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="prodCost" className="text-slate-700 font-semibold">Preço de Custo (R$)</Label>
+                  <Label htmlFor="prodCost" className="text-slate-300 font-semibold">Preço de Custo (R$)</Label>
                   <Input
                     id="prodCost"
                     type="number"
@@ -267,13 +266,13 @@ export default function EstoqueManagement({ products, onAddProduct, onDeleteProd
                     placeholder="Ex: 1.50"
                     value={costPrice}
                     onChange={(e) => setCostPrice(e.target.value)}
-                    className="rounded-xl border-slate-200"
+                    className="rounded-xl border-slate-800 bg-slate-950 text-white"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="prodSale" className="text-slate-700 font-semibold">Preço de Venda (R$) *</Label>
+                <Label htmlFor="prodSale" className="text-slate-300 font-semibold">Preço de Venda (R$) *</Label>
                 <Input
                   id="prodSale"
                   type="number"
@@ -281,7 +280,7 @@ export default function EstoqueManagement({ products, onAddProduct, onDeleteProd
                   placeholder="Ex: 4.00"
                   value={salePrice}
                   onChange={(e) => setSalePrice(e.target.value)}
-                  className="rounded-xl border-slate-200"
+                  className="rounded-xl border-slate-800 bg-slate-950 text-white"
                   required
                 />
               </div>
@@ -291,13 +290,13 @@ export default function EstoqueManagement({ products, onAddProduct, onDeleteProd
                   type="button"
                   variant="outline"
                   onClick={() => setIsOpen(false)}
-                  className="flex-1 rounded-xl border-slate-200"
+                  className="flex-1 rounded-xl border-slate-800 bg-slate-950 text-white font-bold"
                 >
                   Cancelar
                 </Button>
                 <Button
                   type="submit"
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold"
                 >
                   {editingProduct ? 'Salvar Alterações' : 'Cadastrar Produto'}
                 </Button>

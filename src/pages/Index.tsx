@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import DashboardOverview from '@/components/DashboardOverview';
 import BookingCalendar from '@/components/BookingCalendar';
@@ -74,18 +74,109 @@ const INITIAL_SALES = [
 
 export default function Index() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [fields, setFields] = useState(INITIAL_FIELDS);
-  const [customers, setCustomers] = useState(INITIAL_CUSTOMERS);
-  const [bookings, setBookings] = useState(INITIAL_BOOKINGS);
-  const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
-  const [settings, setSettings] = useState(INITIAL_SETTINGS);
-  const [blockedSlots, setBlockedSlots] = useState<any[]>([]);
-  const [mensalistas, setMensalistas] = useState<any[]>(INITIAL_MENSALISTAS);
-  const [eventos, setEventos] = useState<any[]>(INITIAL_EVENTOS);
-  const [accountsPayable, setAccountsPayable] = useState<any[]>(INITIAL_ACCOUNTS_PAYABLE);
-  const [products, setProducts] = useState<any[]>(INITIAL_PRODUCTS);
-  const [sales, setSales] = useState<any[]>(INITIAL_SALES);
+
+  // State initialization with localStorage persistence
+  const [fields, setFields] = useState(() => {
+    const saved = localStorage.getItem('ga_fields');
+    return saved ? JSON.parse(saved) : INITIAL_FIELDS;
+  });
+
+  const [customers, setCustomers] = useState(() => {
+    const saved = localStorage.getItem('ga_customers');
+    return saved ? JSON.parse(saved) : INITIAL_CUSTOMERS;
+  });
+
+  const [bookings, setBookings] = useState(() => {
+    const saved = localStorage.getItem('ga_bookings');
+    return saved ? JSON.parse(saved) : INITIAL_BOOKINGS;
+  });
+
+  const [transactions, setTransactions] = useState(() => {
+    const saved = localStorage.getItem('ga_transactions');
+    return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
+  });
+
+  const [settings, setSettings] = useState(() => {
+    const saved = localStorage.getItem('ga_settings');
+    return saved ? JSON.parse(saved) : INITIAL_SETTINGS;
+  });
+
+  const [blockedSlots, setBlockedSlots] = useState(() => {
+    const saved = localStorage.getItem('ga_blockedSlots');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [mensalistas, setMensalistas] = useState(() => {
+    const saved = localStorage.getItem('ga_mensalistas');
+    return saved ? JSON.parse(saved) : INITIAL_MENSALISTAS;
+  });
+
+  const [eventos, setEventos] = useState(() => {
+    const saved = localStorage.getItem('ga_eventos');
+    return saved ? JSON.parse(saved) : INITIAL_EVENTOS;
+  });
+
+  const [accountsPayable, setAccountsPayable] = useState(() => {
+    const saved = localStorage.getItem('ga_accountsPayable');
+    return saved ? JSON.parse(saved) : INITIAL_ACCOUNTS_PAYABLE;
+  });
+
+  const [products, setProducts] = useState(() => {
+    const saved = localStorage.getItem('ga_products');
+    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
+  });
+
+  const [sales, setSales] = useState(() => {
+    const saved = localStorage.getItem('ga_sales');
+    return saved ? JSON.parse(saved) : INITIAL_SALES;
+  });
+
   const [whatsappMessage, setWhatsappMessage] = useState<string | null>(null);
+
+  // Sync states to localStorage
+  useEffect(() => {
+    localStorage.setItem('ga_fields', JSON.stringify(fields));
+  }, [fields]);
+
+  useEffect(() => {
+    localStorage.setItem('ga_customers', JSON.stringify(customers));
+  }, [customers]);
+
+  useEffect(() => {
+    localStorage.setItem('ga_bookings', JSON.stringify(bookings));
+  }, [bookings]);
+
+  useEffect(() => {
+    localStorage.setItem('ga_transactions', JSON.stringify(transactions));
+  }, [transactions]);
+
+  useEffect(() => {
+    localStorage.setItem('ga_settings', JSON.stringify(settings));
+  }, [settings]);
+
+  useEffect(() => {
+    localStorage.setItem('ga_blockedSlots', JSON.stringify(blockedSlots));
+  }, [blockedSlots]);
+
+  useEffect(() => {
+    localStorage.setItem('ga_mensalistas', JSON.stringify(mensalistas));
+  }, [mensalistas]);
+
+  useEffect(() => {
+    localStorage.setItem('ga_eventos', JSON.stringify(eventos));
+  }, [eventos]);
+
+  useEffect(() => {
+    localStorage.setItem('ga_accountsPayable', JSON.stringify(accountsPayable));
+  }, [accountsPayable]);
+
+  useEffect(() => {
+    localStorage.setItem('ga_products', JSON.stringify(products));
+  }, [products]);
+
+  useEffect(() => {
+    localStorage.setItem('ga_sales', JSON.stringify(sales));
+  }, [sales]);
 
   // Reset All Data Handler
   const handleResetAllData = () => {
@@ -96,6 +187,10 @@ export default function Index() {
     setEventos([]);
     setAccountsPayable([]);
     setBlockedSlots([]);
+    setFields(INITIAL_FIELDS);
+    setProducts(INITIAL_PRODUCTS);
+    setCustomers(INITIAL_CUSTOMERS);
+    localStorage.clear();
   };
 
   // Campos Handlers

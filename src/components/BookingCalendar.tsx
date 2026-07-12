@@ -62,6 +62,7 @@ export default function BookingCalendar({
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [selectedSport, setSelectedSport] = useState("Futebol");
+  const [bookingDate, setBookingDate] = useState(selectedDate);
   const [startTime, setStartTime] = useState("18:00");
   const [endTime, setEndTime] = useState("19:00");
   const [price, setPrice] = useState("");
@@ -118,10 +119,10 @@ export default function BookingCalendar({
     // Check if slot is blocked
     const isBlocked = blockedSlots.some(b => {
       if (b.fieldId !== selectedFieldId || b.timeSlot !== customTimeSlot) return false;
-      if (b.type === 'single' && b.date === selectedDate) return true;
+      if (b.type === 'single' && b.date === bookingDate) return true;
       if (b.type === 'monthly') {
         const [bYear, bMonth] = b.date.split('-');
-        const [sYear, sMonth] = selectedDate.split('-');
+        const [sYear, sMonth] = bookingDate.split('-');
         return bMonth === sMonth && bYear === sYear;
       }
       return false;
@@ -141,7 +142,7 @@ export default function BookingCalendar({
       fieldId: selectedFieldId,
       fieldName: field ? field.name : "Quadra",
       sport: selectedSport,
-      date: selectedDate,
+      date: bookingDate,
       timeSlot: customTimeSlot,
       price: parseFloat(price),
       paid: isPaid
@@ -217,8 +218,11 @@ export default function BookingCalendar({
             Bloquear Horário
           </Button>
           <Button 
-            onClick={() => setIsNewBookingOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2.5 flex items-center gap-2"
+            onClick={() => {
+              setBookingDate(selectedDate);
+              setIsNewBookingOpen(true);
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2.5 flex items-center gap-2 font-bold"
           >
             <Plus size={18} />
             Novo Agendamento
@@ -253,8 +257,26 @@ export default function BookingCalendar({
                 return false;
               });
 
-              // 2. Check if slot has a Diarista booking
-              const booking = filteredBookings.find(b => b.timeSlot === slot);
+              // 2. Check if slot has a Diarista booking (including custom/broken hours)
+              const booking = filteredBookings.find(b => {
+                // Check if booking timeSlot matches exactly or overlaps
+                if (b.timeSlot === slot) return true;
+                
+                // Overlap check for custom/broken hours
+                try {
+                  const [slotStart, slotEnd] = slot.split(' - ');
+                  const [bStart, bEnd] = b.timeSlot.split(' - ');
+                  
+                  const slotStartMin = parseInt(slotStart.split(':')[0]) * 60 + parseInt(slotStart.split(':')[1]);
+                  const slotEndMin = parseInt(slotEnd.split(':')[0]) * 60 + parseInt(slotEnd.split(':')[1]);
+                  const bStartMin = parseInt(bStart.split(':')[0]) * 60 + parseInt(bStart.split(':')[1]);
+                  const bEndMin = parseInt(bEnd.split(':')[0]) * 60 + parseInt(bEnd.split(':')[1]);
+                  
+                  return (bStartMin < slotEndMin && bEndMin > slotStartMin);
+                } catch (e) {
+                  return false;
+                }
+              });
 
               // 3. Check if slot has a Mensalista
               const mensalista = activeMensalistas.find(m => m.timeSlot === slot);
@@ -297,7 +319,7 @@ export default function BookingCalendar({
                         <span className="inline-flex items-center rounded-full bg-emerald-950 text-emerald-400 border border-emerald-900 px-2.5 py-0.5 text-xs font-semibold">
                           ⚽ Diarista: {booking.customerName}
                         </span>
-                        <span className="text-xs text-slate-400">({booking.sport})</span>
+                        <span className="text-xs text-slate-400">({booking.sport} • {booking.timeSlot})</span>
                       </div>
                     ) : (
                       <span className="text-sm text-slate-500 italic">Disponível</span>
@@ -326,9 +348,10 @@ export default function BookingCalendar({
                           const [start, end] = slot.split(' - ');
                           setStartTime(start);
                           setEndTime(end);
+                          setBookingDate(selectedDate);
                           setIsNewBookingOpen(true);
                         }}
-                        className="text-blue-400 hover:text-blue-300 hover:bg-blue-950/30 rounded-lg"
+                        className="text-blue-400 hover:text-blue-300 hover:bg-blue-950/30 rounded-lg font-bold"
                       >
                         Reservar
                       </Button>
@@ -442,7 +465,7 @@ export default function BookingCalendar({
                 </Button>
                 <Button
                   type="submit"
-                  className="flex-1 bg-rose-600 hover:bg-rose-700 text-white rounded-xl"
+                  className="flex-1 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold"
                 >
                   Bloquear Horário
                 </Button>
@@ -547,6 +570,19 @@ export default function BookingCalendar({
                 </div>
               </div>
 
+              {/* Date Picker in Modal */}
+              <div className="space-y-1">
+                <Label htmlFor="bookingDate" className="text-slate-300 font-semibold">Data do Agendamento *</Label>
+                <Input
+                  id="bookingDate"
+                  type="date"
+                  value={bookingDate}
+                  onChange={(e) => setBookingDate(e.target.value)}
+                  className="rounded-xl border-slate-800 bg-slate-950 text-white"
+                  required
+                />
+              </div>
+
               {/* Custom/Broken Hours Inputs */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -611,7 +647,7 @@ export default function BookingCalendar({
                 </Button>
                 <Button
                   type="submit"
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold"
                 >
                   Confirmar Reserva
                 </Button>

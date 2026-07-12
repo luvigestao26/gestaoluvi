@@ -72,28 +72,28 @@ export default function VendasManagement({ sales, products, onAddSale, onDeleteS
     <div className="space-y-6">
       {/* Summary Card */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card className="border-none shadow-md bg-white">
+        <Card className="border-slate-800 shadow-md bg-slate-900 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total de Vendas (Hoje)</CardTitle>
-            <div className="rounded-full bg-emerald-100 p-2 text-emerald-600">
+            <CardTitle className="text-sm font-medium text-slate-400">Total de Vendas (Hoje)</CardTitle>
+            <div className="rounded-full bg-blue-950 p-2 text-blue-400 border border-blue-900">
               <DollarSign className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">R$ {totalSalesAmount.toFixed(2)}</div>
-            <p className="text-xs text-slate-500 mt-1">{sales.length} vendas realizadas</p>
+            <div className="text-2xl font-bold text-white">R$ {totalSalesAmount.toFixed(2)}</div>
+            <p className="text-xs text-slate-400 mt-1">{sales.length} vendas realizadas</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white p-6 rounded-2xl shadow-sm">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-sm">
         <div>
-          <h2 className="text-xl font-bold text-slate-800">Registro de Vendas</h2>
-          <p className="text-sm text-slate-500">Lance vendas de bebidas, lanches e acessórios diretamente no caixa</p>
+          <h2 className="text-xl font-bold text-white">Registro de Vendas</h2>
+          <p className="text-sm text-slate-400">Lance vendas de bebidas, lanches e acessórios diretamente no caixa</p>
         </div>
         <Button 
           onClick={() => setIsOpen(true)}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-4 py-2.5 flex items-center gap-2"
+          className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2.5 flex items-center gap-2 font-bold"
         >
           <Plus size={18} />
           Nova Venda
@@ -101,12 +101,12 @@ export default function VendasManagement({ sales, products, onAddSale, onDeleteS
       </div>
 
       {/* Sales Table */}
-      <Card className="border-none shadow-md bg-white overflow-hidden">
+      <Card className="border-slate-800 shadow-md bg-slate-900 text-white overflow-hidden">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider border-b border-slate-100">
+                <tr className="bg-slate-950 text-slate-400 text-xs font-bold uppercase tracking-wider border-b border-slate-800">
                   <th className="p-4">Produto</th>
                   <th className="p-4">Qtd</th>
                   <th className="p-4">Cliente</th>
@@ -115,18 +115,18 @@ export default function VendasManagement({ sales, products, onAddSale, onDeleteS
                   <th className="p-4 text-center">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-sm">
+              <tbody className="divide-y divide-slate-800 text-sm">
                 {sales.map((sale) => (
-                  <tr key={sale.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="p-4 font-semibold text-slate-800">{sale.productName}</td>
-                    <td className="p-4 text-slate-600">{sale.quantity}x</td>
-                    <td className="p-4 text-slate-500">{sale.customerName}</td>
+                  <tr key={sale.id} className="hover:bg-slate-950/50 transition-colors">
+                    <td className="p-4 font-semibold text-white">{sale.productName}</td>
+                    <td className="p-4 text-slate-300">{sale.quantity}x</td>
+                    <td className="p-4 text-slate-400">{sale.customerName}</td>
                     <td className="p-4">
-                      <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-800">
+                      <span className="inline-flex items-center rounded-full bg-blue-950 border border-blue-900 px-2.5 py-0.5 text-xs font-medium text-blue-400">
                         {sale.paymentMethod}
                       </span>
                     </td>
-                    <td className="p-4 text-right font-bold text-emerald-600">
+                    <td className="p-4 text-right font-bold text-emerald-400">
                       R$ {sale.total.toFixed(2)}
                     </td>
                     <td className="p-4 text-center">
@@ -137,7 +137,7 @@ export default function VendasManagement({ sales, products, onAddSale, onDeleteS
                             showSuccess("Venda estornada!");
                           }
                         }}
-                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-950/30 rounded-lg transition-colors"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -147,7 +147,7 @@ export default function VendasManagement({ sales, products, onAddSale, onDeleteS
 
                 {sales.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-slate-500">
+                    <td colSpan={6} className="p-8 text-center text-slate-400">
                       Nenhuma venda registrada hoje.
                     </td>
                   </tr>
@@ -161,11 +161,11 @@ export default function VendasManagement({ sales, products, onAddSale, onDeleteS
       {/* Modal */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="bg-gradient-to-r from-emerald-600 to-teal-500 p-6 text-white flex justify-between items-center">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-gradient-to-r from-slate-950 to-slate-900 p-6 text-white flex justify-between items-center border-b border-slate-800">
               <div>
                 <h3 className="text-xl font-bold">Nova Venda</h3>
-                <p className="text-xs text-emerald-100 mt-1">Selecione os itens para registrar a venda</p>
+                <p className="text-xs text-slate-400 mt-1">Selecione os itens para registrar a venda</p>
               </div>
               <button onClick={() => setIsOpen(false)} className="p-1.5 rounded-full bg-white/10 hover:bg-white/20">
                 <X size={20} />
@@ -174,16 +174,16 @@ export default function VendasManagement({ sales, products, onAddSale, onDeleteS
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div className="space-y-1">
-                <Label className="text-slate-700 font-semibold">Produto *</Label>
+                <Label className="text-slate-300 font-semibold">Produto *</Label>
                 <select
                   value={productId}
                   onChange={(e) => setProductId(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full rounded-xl border border-slate-800 bg-slate-950 text-white p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
-                  <option value="">Selecione um produto</option>
+                  <option value="" className="bg-slate-950 text-white">Selecione um produto</option>
                   {products.map(p => (
-                    <option key={p.id} value={p.id}>
+                    <option key={p.id} value={p.id} className="bg-slate-950 text-white">
                       {p.name} (Estoque: {p.quantity} | R$ {p.salePrice.toFixed(2)})
                     </option>
                   ))}
@@ -192,41 +192,41 @@ export default function VendasManagement({ sales, products, onAddSale, onDeleteS
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label htmlFor="saleQty" className="text-slate-700 font-semibold">Quantidade *</Label>
+                  <Label htmlFor="saleQty" className="text-slate-300 font-semibold">Quantidade *</Label>
                   <Input
                     id="saleQty"
                     type="number"
                     min="1"
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
-                    className="rounded-xl border-slate-200"
+                    className="rounded-xl border-slate-800 bg-slate-950 text-white"
                     required
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-slate-700 font-semibold">Forma de Pagamento</Label>
+                  <Label className="text-slate-300 font-semibold">Forma de Pagamento</Label>
                   <select
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950 text-white p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="Pix">Pix 📱</option>
-                    <option value="Dinheiro">Dinheiro 💵</option>
-                    <option value="Cartão de Crédito">Cartão de Crédito 💳</option>
-                    <option value="Cartão de Débito">Cartão de Débito 💳</option>
+                    <option value="Pix" className="bg-slate-950 text-white">Pix 📱</option>
+                    <option value="Dinheiro" className="bg-slate-950 text-white">Dinheiro 💵</option>
+                    <option value="Cartão de Crédito" className="bg-slate-950 text-white">Cartão de Crédito 💳</option>
+                    <option value="Cartão de Débito" className="bg-slate-950 text-white">Cartão de Débito 💳</option>
                   </select>
                 </div>
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="saleCustomer" className="text-slate-700 font-semibold">Nome do Cliente (Opcional)</Label>
+                <Label htmlFor="saleCustomer" className="text-slate-300 font-semibold">Nome do Cliente (Opcional)</Label>
                 <Input
                   id="saleCustomer"
                   placeholder="Ex: Carlos Silva"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className="rounded-xl border-slate-200"
+                  className="rounded-xl border-slate-800 bg-slate-950 text-white"
                 />
               </div>
 
@@ -235,13 +235,13 @@ export default function VendasManagement({ sales, products, onAddSale, onDeleteS
                   type="button"
                   variant="outline"
                   onClick={() => setIsOpen(false)}
-                  className="flex-1 rounded-xl border-slate-200"
+                  className="flex-1 rounded-xl border-slate-800 bg-slate-950 text-white font-bold"
                 >
                   Cancelar
                 </Button>
                 <Button
                   type="submit"
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold"
                 >
                   Confirmar Venda
                 </Button>
