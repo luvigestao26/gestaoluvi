@@ -8,6 +8,7 @@ import FieldManagement from '@/components/FieldManagement';
 import CustomerManagement from '@/components/CustomerManagement';
 import FinancialManagement from '@/components/FinancialManagement';
 import SettingsManagement from '@/components/SettingsManagement';
+import WhatsAppSimulator from '@/components/WhatsAppSimulator';
 import { MadeWithDyad } from "@/components/made-with-dyad";
 
 // Mock initial data
@@ -50,6 +51,7 @@ export default function Index() {
   const [bookings, setBookings] = useState(INITIAL_BOOKINGS);
   const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
   const [settings, setSettings] = useState(INITIAL_SETTINGS);
+  const [whatsappMessage, setWhatsappMessage] = useState<string | null>(null);
 
   // Field Handlers
   const handleAddField = (newField: any) => {
@@ -80,6 +82,7 @@ export default function Index() {
   // Booking Handlers
   const handleAddBooking = (newBooking: any) => {
     setBookings([newBooking, ...bookings]);
+    
     // Automatically add to transactions if paid
     if (newBooking.paid) {
       const newTransaction = {
@@ -92,6 +95,11 @@ export default function Index() {
       };
       setTransactions([newTransaction, ...transactions]);
     }
+
+    // Trigger WhatsApp Simulation
+    const formattedDate = newBooking.date.split('-').reverse().join('/');
+    const msg = `Olá, *${newBooking.customerName}*!\n\nSua reserva na *${settings.name}* foi confirmada com sucesso! 🎉\n\n📅 *Data:* ${formattedDate}\n⏰ *Horário:* ${newBooking.timeSlot}\n🏟️ *Quadra:* ${newBooking.fieldName}\n💵 *Valor:* R$ ${newBooking.price.toFixed(2)}\n🚦 *Status:* ${newBooking.paid ? '✅ Pago' : '⏳ Pendente de Pagamento'}\n\n_Chave Pix para pagamento:_ ${settings.pixKey} (${settings.bankName})\n\nObrigado e bom jogo! ⚽🎾`;
+    setWhatsappMessage(msg);
   };
 
   const handleDeleteBooking = (id: string) => {
@@ -113,6 +121,11 @@ export default function Index() {
             date: b.date
           };
           setTransactions(prev => [newTransaction, ...prev]);
+
+          // Trigger WhatsApp Simulation for Payment Confirmation
+          const formattedDate = b.date.split('-').reverse().join('/');
+          const msg = `Olá, *${b.customerName}*!\n\nConfirmamos o recebimento do seu pagamento para a reserva do dia *${formattedDate}* às *${b.timeSlot}* na *${b.fieldName}*! 💵✅\n\nTudo pronto para o seu jogo. Nos vemos na *${settings.name}*! ⚽🎾`;
+          setWhatsappMessage(msg);
         }
         return { ...b, paid: updatedPaid };
       }
@@ -204,6 +217,12 @@ export default function Index() {
             />
           )}
         </div>
+
+        {/* WhatsApp Simulator Widget */}
+        <WhatsAppSimulator 
+          message={whatsappMessage} 
+          onClose={() => setWhatsappMessage(null)} 
+        />
 
         {/* Footer */}
         <footer className="mt-auto border-t border-slate-100 bg-white py-4">
