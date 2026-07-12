@@ -7,6 +7,7 @@ import BookingCalendar from '@/components/BookingCalendar';
 import FieldManagement from '@/components/FieldManagement';
 import CustomerManagement from '@/components/CustomerManagement';
 import FinancialManagement from '@/components/FinancialManagement';
+import SettingsManagement from '@/components/SettingsManagement';
 import { MadeWithDyad } from "@/components/made-with-dyad";
 
 // Mock initial data
@@ -32,12 +33,23 @@ const INITIAL_TRANSACTIONS = [
   { id: '2', description: 'Compra de Bolas de Tênis', amount: 150, type: 'expense', category: 'Manutenção', date: new Date().toISOString().split('T')[0] },
 ];
 
+const INITIAL_SETTINGS = {
+  name: "Arena Central",
+  address: "Av. das Flores, 1230 - Centro",
+  phone: "(11) 98888-7777",
+  openTime: "08:00",
+  closeTime: "23:00",
+  pixKey: "financeiro@arenacentral.com",
+  bankName: "Banco Cora"
+};
+
 export default function Index() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [fields, setFields] = useState(INITIAL_FIELDS);
   const [customers, setCustomers] = useState(INITIAL_CUSTOMERS);
   const [bookings, setBookings] = useState(INITIAL_BOOKINGS);
   const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
+  const [settings, setSettings] = useState(INITIAL_SETTINGS);
 
   // Field Handlers
   const handleAddField = (newField: any) => {
@@ -128,7 +140,7 @@ export default function Index() {
         <header className="bg-white border-b border-slate-100 px-8 py-4 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-slate-500">Arena Ativa:</span>
-            <span className="text-sm font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg">Arena Central</span>
+            <span className="text-sm font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg">{settings.name}</span>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-xs text-slate-400">Última sincronização: Agora mesmo</span>
@@ -182,6 +194,13 @@ export default function Index() {
               transactions={transactions}
               onAddTransaction={handleAddTransaction}
               onDeleteTransaction={handleDeleteTransaction}
+            />
+          )}
+
+          {activeTab === 'settings' && (
+            <SettingsManagement 
+              arenaSettings={settings}
+              onSaveSettings={setSettings}
             />
           )}
         </div>

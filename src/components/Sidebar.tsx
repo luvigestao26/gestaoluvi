@@ -23,6 +23,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     { id: 'fields', label: 'Quadras', icon: Activity },
     { id: 'customers', label: 'Clientes', icon: Users },
     { id: 'financial', label: 'Financeiro', icon: DollarSign },
+    { id: 'settings', label: 'Configurações', icon: Settings },
   ];
 
   return (

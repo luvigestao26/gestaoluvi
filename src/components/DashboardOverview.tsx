@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 interface DashboardOverviewProps {
   bookings: any[];
@@ -52,6 +53,34 @@ export default function DashboardOverview({ bookings, customers, fields, transac
     acc[b.sport] = (acc[b.sport] || 0) + 1;
     return acc;
   }, {});
+
+  // Prepare chart data (last 7 days)
+  const getChartData = () => {
+    const data = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const label = d.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric' });
+      
+      const dayIncome = transactions
+        .filter(t => t.date === dateStr && t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const dayExpense = transactions
+        .filter(t => t.date === dateStr && t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      data.push({
+        name: label,
+        Receitas: dayIncome,
+        Despesas: dayExpense
+      });
+    }
+    return data;
+  };
+
+  const chartData = getChartData();
 
   return (
     <div className="space-y-6">
@@ -152,6 +181,36 @@ export default function DashboardOverview({ bookings, customers, fields, transac
           </CardContent>
         </Card>
       </div>
+
+      {/* Interactive Chart Section */}
+      <Card className="border-none shadow-md bg-white">
+        <CardHeader>
+          <CardTitle className="text-lg font-bold text-slate-800">Desempenho Financeiro</CardTitle>
+          <CardDescription>Fluxo de caixa dos últimos 7 dias</CardDescription>
+        </CardHeader>
+        <CardContent className="h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.2}/>
+                  <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `R$ ${v}`} />
+              <Tooltip formatter={(value) => [`R$ ${value}`, '']} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
+              <Area type="monotone" dataKey="Receitas" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" />
+              <Area type="monotone" dataKey="Despesas" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorExpense)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 
       {/* Charts & Recent Activity */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
