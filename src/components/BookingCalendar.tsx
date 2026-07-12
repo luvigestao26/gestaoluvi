@@ -33,14 +33,17 @@ interface BookingCalendarProps {
   onUnblockSlot: (id: string) => void;
 }
 
-// Half-hour slots for broken hours support
-const TIME_SLOTS = [
-  "08:00 - 09:00", "09:00 - 10:00", "10:00 - 11:00", "11:00 - 12:00",
-  "12:00 - 13:00", "13:00 - 14:00", "14:00 - 15:00", "15:00 - 16:00",
-  "16:00 - 17:00", "17:00 - 18:00", "18:00 - 19:00", "18:30 - 19:30",
-  "19:00 - 20:00", "19:30 - 20:30", "20:00 - 21:00", "21:00 - 22:00",
-  "22:00 - 23:00"
-];
+// Helper functions for time calculations
+const parseTimeToMinutes = (timeStr: string): number => {
+  const [hours, minutes] = timeStr.trim().split(':').map(Number);
+  return hours * 60 + minutes;
+};
+
+const formatMinutesToTime = (mins: number): string => {
+  const hours = Math.floor(mins / 60);
+  const minutes = mins % 60;
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+};
 
 export default function BookingCalendar({ 
   bookings, 
@@ -71,7 +74,8 @@ export default function BookingCalendar({
   const [isPaid, setIsPaid] = useState(false);
 
   // Form states for blocking
-  const [blockTimeSlot, setBlockTimeSlot] = useState("");
+  const [blockStartTime, setBlockStartTime] = useState("10:00");
+  const [blockEndTime, setBlockEndTime] = useState("11:00");
   const [blockType, setBlockType] = useState<'single' | 'monthly'>('single');
 
   // Get day of week for selected date (0 = Sunday, 1 = Monday, etc.)
@@ -90,7 +94,6 @@ export default function BookingCalendar({
 
     // Recurrence logic
     if (m.recurrence === 'biweekly') {
-      // Check if the week number of the year is even/odd to alternate weeks
       const dateObj = new Date(selectedDate + 'T00:00:00');
       const oneJan = new Date(dateObj.getFullYear(), 0, 1);
       const numberOfDays = Math.floor((dateObj.getTime() - oneJan.getTime()) / (24 * 60 * 60 * 1000));
@@ -99,18 +102,29 @@ export default function BookingCalendar({
     }
 
     if (m.recurrence === 'monthly_3x') {
-      // Only show in the first 3 weeks of the month (day of month <= 21)
       const dayOfMonth = new Date(selectedDate + 'T00:00:00').getDate();
       return dayOfMonth <= 21;
     }
 
-    return true; // weekly or custom defaults to true
+    return true;
   });
 
   // Filter events for selected date and field
   const activeEventos = eventos.filter(
     e => e.date === selectedDate && e.fieldId === selectedFieldId
   );
+
+  // Filter blocks for selected date and field
+  const activeBlocks = blockedSlots.filter(b => {
+    if (b.fieldId !== selectedFieldId) return false;
+    if (b.type === 'single' && b.date === selectedDate) return true;
+    if (b.type === 'monthly') {
+      const [bYear, bMonth] = b.date.split('-');
+      const [sYear, sMonth] = selectedDate.split('-');
+      return bMonth === sMonth && bYear === sYear;
+    }
+    return false;
+  });
 
   const handleFieldChange = (value: string) => {
     setSelectedFieldId(value);
@@ -129,6 +143,142 @@ export default function BookingCalendar({
     }
   };
 
+  // Dynamic Timeline Generation Algorithm
+  const generateTimeline = () => {
+    const dayStart = 480; // 08:00 in minutes
+    const dayEnd = 1380; // 23:00 in minutes
+
+    // Collect all busy intervals
+    const busyIntervals: Array<{
+      start: number;
+      end: number;
+      type: 'booking' | 'mensalista' | 'event' | 'block';
+      label: string;
+      data: any;
+    }> = [];
+
+    // 1. Add Diarista bookings
+    filteredBookings.forEach(b => {
+      try {
+        const [startStr, endStr] = b.timeSlot.split('-');
+        busyIntervals.push({
+          start: parseTimeToMinutes(startStr),
+          end: parseTimeToMinutes(endStr),
+          type: 'booking',
+          label: b.customerName,
+          data: b
+        });
+      } catch (e) {}
+    });
+
+    // 2. Add Mensalistas
+    activeMensalistas.forEach(m => {
+      try {
+        const [startStr, endStr] = m.timeSlot.split('-');
+        busyIntervals.push({
+          start: parseTimeToMinutes(startStr),
+          end: parseTimeToMinutes(endStr),
+          type: 'mensalista',
+          label: m.customerName,
+          data: m
+        });
+      } catch (e) {}
+    });
+
+    // 3. Add Events
+    activeEventos.forEach(ev => {
+      try {
+        busyIntervals.push({
+          start: parseTimeToMinutes(ev.startTime),
+          end: parseTimeToMinutes(ev.endTime),
+          type: 'event',
+          label: ev.title,
+          data: ev
+        });
+      } catch (e) {}
+    });
+
+    // 4. Add Blocks
+    activeBlocks.forEach(block => {
+      try {
+        const [startStr, endStr] = block.timeSlot.split('-');
+        busyIntervals.push({
+          start: parseTimeToMinutes(startStr),
+          end: parseTimeToMinutes(endStr),
+          type: 'block',
+          label: 'Bloqueado',
+          data: block
+        });
+      } catch (e) {}
+    });
+
+    // Sort busy intervals by start time
+    busyIntervals.sort((a, b) => a.start - b.start);
+
+    // Build the timeline
+    const timeline: Array<{
+      start: number;
+      end: number;
+      isBusy: boolean;
+      type?: 'booking' | 'mensalista' | 'event' | 'block';
+      label?: string;
+      data?: any;
+    }> = [];
+
+    let current = dayStart;
+
+    busyIntervals.forEach(interval => {
+      // If there is a gap before this busy interval, fill it with free slots
+      if (interval.start > current) {
+        let gapStart = current;
+        const gapEnd = interval.start;
+
+        // Split the gap into 1-hour slots for better usability
+        while (gapStart < gapEnd) {
+          const nextHour = gapStart + 60;
+          const slotEnd = Math.min(nextHour, gapEnd);
+          timeline.push({
+            start: gapStart,
+            end: slotEnd,
+            isBusy: false
+          });
+          gapStart = slotEnd;
+        }
+      }
+
+      // Add the busy interval
+      timeline.push({
+        start: interval.start,
+        end: interval.end,
+        isBusy: true,
+        type: interval.type,
+        label: interval.label,
+        data: interval.data
+      });
+
+      current = Math.max(current, interval.end);
+    });
+
+    // Fill any remaining gap at the end of the day
+    if (current < dayEnd) {
+      let gapStart = current;
+      while (gapStart < dayEnd) {
+        const nextHour = gapStart + 60;
+        const slotEnd = Math.min(nextHour, dayEnd);
+        timeline.push({
+          start: gapStart,
+          end: slotEnd,
+          isBusy: false
+        });
+        gapStart = slotEnd;
+      }
+    }
+
+    return timeline;
+  };
+
+  const timeline = generateTimeline();
+
   const handleSubmitBooking = (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName || !startTime || !endTime || !selectedFieldId || !price) {
@@ -137,24 +287,6 @@ export default function BookingCalendar({
     }
 
     const customTimeSlot = `${startTime} - ${endTime}`;
-
-    // Check if slot is blocked
-    const isBlocked = blockedSlots.some(b => {
-      if (b.fieldId !== selectedFieldId || b.timeSlot !== customTimeSlot) return false;
-      if (b.type === 'single' && b.date === bookingDate) return true;
-      if (b.type === 'monthly') {
-        const [bYear, bMonth] = b.date.split('-');
-        const [sYear, sMonth] = bookingDate.split('-');
-        return bMonth === sMonth && bYear === sYear;
-      }
-      return false;
-    });
-
-    if (isBlocked) {
-      showError("Este horário está bloqueado pelo administrador!");
-      return;
-    }
-
     const field = fields.find(f => f.id === selectedFieldId);
 
     const newBooking = {
@@ -181,8 +313,8 @@ export default function BookingCalendar({
 
   const handleBlockSlotSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!blockTimeSlot) {
-      showError("Selecione um horário para bloquear.");
+    if (!blockStartTime || !blockEndTime) {
+      showError("Selecione o horário de início e fim para bloquear.");
       return;
     }
 
@@ -190,13 +322,12 @@ export default function BookingCalendar({
       id: Date.now().toString(),
       fieldId: selectedFieldId,
       date: selectedDate,
-      timeSlot: blockTimeSlot,
+      timeSlot: `${blockStartTime} - ${blockEndTime}`,
       type: blockType
     };
 
     onBlockSlot(newBlock);
     showSuccess("Horário bloqueado com sucesso!");
-    setBlockTimeSlot("");
     setIsBlockModalOpen(false);
   };
 
@@ -259,115 +390,101 @@ export default function BookingCalendar({
           <CardHeader className="border-b border-slate-800 pb-4">
             <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
               <Clock className="text-blue-400" size={20} />
-              Grade de Horários Integrada
+              Grade de Horários Dinâmica
             </CardTitle>
             <CardDescription className="text-slate-400">
               Visualização em tempo real para o dia {selectedDate.split('-').reverse().join('/')}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0 divide-y divide-slate-800">
-            {TIME_SLOTS.map(slot => {
-              // 1. Check if slot is blocked
-              const block = blockedSlots.find(b => {
-                if (b.fieldId !== selectedFieldId || b.timeSlot !== slot) return false;
-                if (b.type === 'single' && b.date === selectedDate) return true;
-                if (b.type === 'monthly') {
-                  const [bYear, bMonth] = b.date.split('-');
-                  const [sYear, sMonth] = selectedDate.split('-');
-                  return bMonth === sMonth && bYear === sYear;
-                }
-                return false;
-              });
-
-              // 2. Check if slot has a Diarista booking (including custom/broken hours)
-              const booking = filteredBookings.find(b => {
-                if (b.timeSlot === slot) return true;
-                
-                try {
-                  const [slotStart, slotEnd] = slot.split(' - ');
-                  const [bStart, bEnd] = b.timeSlot.split(' - ');
-                  
-                  const slotStartMin = parseInt(slotStart.split(':')[0]) * 60 + parseInt(slotStart.split(':')[1]);
-                  const slotEndMin = parseInt(slotEnd.split(':')[0]) * 60 + parseInt(slotEnd.split(':')[1]);
-                  const bStartMin = parseInt(bStart.split(':')[0]) * 60 + parseInt(bStart.split(':')[1]);
-                  const bEndMin = parseInt(bEnd.split(':')[0]) * 60 + parseInt(bEnd.split(':')[1]);
-                  
-                  return (bStartMin < slotEndMin && bEndMin > slotStartMin);
-                } catch (e) {
-                  return false;
-                }
-              });
-
-              // 3. Check if slot has a Mensalista
-              const mensalista = activeMensalistas.find(m => m.timeSlot === slot);
-
-              // 4. Check if slot has an Event
-              const event = activeEventos.find(ev => {
-                const [slotStart] = slot.split(' - ');
-                const slotHour = parseInt(slotStart.split(':')[0]);
-                const eventStartHour = parseInt(ev.startTime.split(':')[0]);
-                const eventEndHour = parseInt(ev.endTime.split(':')[0]);
-                return slotHour >= eventStartHour && slotHour < eventEndHour;
-              });
+            {timeline.map((slot, index) => {
+              const slotTimeStr = `${formatMinutesToTime(slot.start)} - ${formatMinutesToTime(slot.end)}`;
 
               return (
-                <div key={slot} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-slate-950/50 transition-colors gap-2">
+                <div key={index} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-slate-950/50 transition-colors gap-2">
                   <div className="flex items-center gap-4">
-                    <span className="text-sm font-semibold text-slate-300 w-28">{slot}</span>
+                    <span className="text-sm font-semibold text-slate-300 w-28">{slotTimeStr}</span>
                     
-                    {block ? (
-                      <div className="flex items-center gap-2 text-rose-400 font-semibold text-xs sm:text-sm">
-                        <Lock size={14} />
-                        <span>Bloqueado pelo Administrador {block.type === 'monthly' && '(Mensal/Anual)'}</span>
-                      </div>
-                    ) : event ? (
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="inline-flex items-center rounded-full bg-amber-950 text-amber-400 border border-amber-900 px-2.5 py-0.5 text-xs font-semibold">
-                          🏆 Evento: {event.title}
-                        </span>
-                        <span className="text-xs text-slate-400">({event.description || "Sem detalhes"})</span>
-                      </div>
-                    ) : mensalista ? (
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="inline-flex items-center rounded-full bg-blue-950 text-blue-400 border border-blue-900 px-2.5 py-0.5 text-xs font-semibold">
-                          👤 Mensalista: {mensalista.customerName}
-                        </span>
-                        <span className="text-xs text-slate-400">({mensalista.sport})</span>
-                      </div>
-                    ) : booking ? (
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="inline-flex items-center rounded-full bg-emerald-950 text-emerald-400 border border-emerald-900 px-2.5 py-0.5 text-xs font-semibold">
-                          ⚽ Diarista: {booking.customerName}
-                        </span>
-                        <span className="text-xs text-slate-400">({booking.sport} • {booking.timeSlot})</span>
-                      </div>
+                    {slot.isBusy ? (
+                      slot.type === 'block' ? (
+                        <div className="flex items-center gap-2 text-rose-400 font-semibold text-xs sm:text-sm">
+                          <Lock size={14} />
+                          <span>Bloqueado pelo Administrador {slot.data?.type === 'monthly' && '(Mensal/Anual)'}</span>
+                        </div>
+                      ) : slot.type === 'event' ? (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="inline-flex items-center rounded-full bg-amber-950 text-amber-400 border border-amber-900 px-2.5 py-0.5 text-xs font-semibold">
+                            🏆 Evento: {slot.label}
+                          </span>
+                          <span className="text-xs text-slate-400">({slot.data?.description || "Sem detalhes"})</span>
+                        </div>
+                      ) : slot.type === 'mensalista' ? (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="inline-flex items-center rounded-full bg-blue-950 text-blue-400 border border-blue-900 px-2.5 py-0.5 text-xs font-semibold">
+                            👤 Mensalista: {slot.label}
+                          </span>
+                          <span className="text-xs text-slate-400">({slot.data?.sport})</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="inline-flex items-center rounded-full bg-emerald-950 text-emerald-400 border border-emerald-900 px-2.5 py-0.5 text-xs font-semibold">
+                            ⚽ Diarista: {slot.label}
+                          </span>
+                          <span className="text-xs text-slate-400">({slot.data?.sport})</span>
+                        </div>
+                      )
                     ) : (
                       <span className="text-sm text-slate-500 italic">Disponível</span>
                     )}
                   </div>
 
                   <div className="self-end sm:self-auto">
-                    {block ? (
+                    {slot.isBusy ? (
+                      slot.type === 'block' ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            onUnblockSlot(slot.data.id);
+                            showSuccess("Horário desbloqueado!");
+                          }}
+                          className="text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 rounded-lg flex items-center gap-1 text-xs"
+                        >
+                          <Unlock size={14} />
+                          Desbloquear
+                        </Button>
+                      ) : slot.type === 'booking' ? (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => onTogglePaid(slot.data.id)}
+                            className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                              slot.data.paid 
+                                ? 'bg-emerald-950 text-emerald-400 border border-emerald-900 hover:bg-emerald-900/50' 
+                                : 'bg-amber-950 text-amber-400 border border-amber-900 hover:bg-amber-900/50'
+                            }`}
+                          >
+                            {slot.data.paid ? 'Pago' : 'Pendente'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              if(confirm("Deseja realmente cancelar este agendamento?")) {
+                                onDeleteBooking(slot.data.id);
+                                showSuccess("Agendamento cancelado!");
+                              }
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-950/30 rounded-lg transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ) : null
+                    ) : (
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => {
-                          onUnblockSlot(block.id);
-                          showSuccess("Horário desbloqueado!");
-                        }}
-                        className="text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 rounded-lg flex items-center gap-1 text-xs"
-                      >
-                        <Unlock size={14} />
-                        Desbloquear
-                      </Button>
-                    ) : !event && !mensalista && !booking ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          const [start, end] = slot.split(' - ');
-                          setStartTime(start);
-                          setEndTime(end);
+                          setStartTime(formatMinutesToTime(slot.start));
+                          setEndTime(formatMinutesToTime(slot.end));
                           setBookingDate(selectedDate);
                           setIsNewBookingOpen(true);
                         }}
@@ -375,31 +492,7 @@ export default function BookingCalendar({
                       >
                         Reservar
                       </Button>
-                    ) : booking ? (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => onTogglePaid(booking.id)}
-                          className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
-                            booking.paid 
-                              ? 'bg-emerald-950 text-emerald-400 border border-emerald-900 hover:bg-emerald-900/50' 
-                              : 'bg-amber-950 text-amber-400 border border-amber-900 hover:bg-amber-900/50'
-                          }`}
-                        >
-                          {booking.paid ? 'Pago' : 'Pendente'}
-                        </button>
-                        <button
-                          onClick={() => {
-                            if(confirm("Deseja realmente cancelar este agendamento?")) {
-                              onDeleteBooking(booking.id);
-                              showSuccess("Agendamento cancelado!");
-                            }
-                          }}
-                          className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-950/30 rounded-lg transition-colors"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    ) : null}
+                    )}
                   </div>
                 </div>
               );
@@ -447,18 +540,29 @@ export default function BookingCalendar({
             </div>
 
             <form onSubmit={handleBlockSlotSubmit} className="p-6 space-y-4">
-              <div className="space-y-1">
-                <Label className="text-slate-300 font-semibold">Horário para Bloquear *</Label>
-                <Select value={blockTimeSlot} onValueChange={setBlockTimeSlot}>
-                  <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
-                    <SelectValue placeholder="Selecione o horário" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-950 border-slate-800 text-white">
-                    {TIME_SLOTS.map(slot => (
-                      <SelectItem key={slot} value={slot}>{slot}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="blockStart" className="text-slate-300 font-semibold">Hora Início *</Label>
+                  <Input
+                    id="blockStart"
+                    type="time"
+                    value={blockStartTime}
+                    onChange={(e) => setBlockStartTime(e.target.value)}
+                    className="rounded-xl border-slate-800 bg-slate-950 text-white"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="blockEnd" className="text-slate-300 font-semibold">Hora Fim *</Label>
+                  <Input
+                    id="blockEnd"
+                    type="time"
+                    value={blockEndTime}
+                    onChange={(e) => setBlockEndTime(e.target.value)}
+                    className="rounded-xl border-slate-800 bg-slate-950 text-white"
+                    required
+                  />
+                </div>
               </div>
 
               <div className="space-y-1">
