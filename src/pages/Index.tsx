@@ -11,6 +11,7 @@ import EstoqueManagement from '@/components/EstoqueManagement';
 import VendasManagement from '@/components/VendasManagement';
 import DiaristasManagement from '@/components/DiaristasManagement';
 import RelatoriosManagement from '@/components/RelatoriosManagement';
+import CamposManagement from '@/components/CamposManagement';
 import WhatsAppSimulator from '@/components/WhatsAppSimulator';
 import { MadeWithDyad } from "@/components/made-with-dyad";
 
@@ -38,12 +39,12 @@ const INITIAL_TRANSACTIONS = [
 ];
 
 const INITIAL_SETTINGS = {
-  name: "Arena Central",
+  name: "Gestão Arenas",
   address: "Av. das Flores, 1230 - Centro",
   phone: "(11) 98888-7777",
   openTime: "08:00",
   closeTime: "23:00",
-  pixKey: "financeiro@arenacentral.com",
+  pixKey: "financeiro@gestaoarenas.com",
   bankName: "Banco Cora"
 };
 
@@ -85,6 +86,30 @@ export default function Index() {
   const [products, setProducts] = useState<any[]>(INITIAL_PRODUCTS);
   const [sales, setSales] = useState<any[]>(INITIAL_SALES);
   const [whatsappMessage, setWhatsappMessage] = useState<string | null>(null);
+
+  // Reset All Data Handler
+  const handleResetAllData = () => {
+    setBookings([]);
+    setTransactions([]);
+    setSales([]);
+    setMensalistas([]);
+    setEventos([]);
+    setAccountsPayable([]);
+    setBlockedSlots([]);
+  };
+
+  // Campos Handlers
+  const handleAddField = (newField: any) => {
+    setFields([...fields, newField]);
+  };
+
+  const handleDeleteField = (id: string) => {
+    setFields(fields.filter(f => f.id !== id));
+  };
+
+  const handleUpdateField = (updatedField: any) => {
+    setFields(fields.map(f => f.id === updatedField.id ? updatedField : f));
+  };
 
   // Booking Handlers
   const handleAddBooking = (newBooking: any) => {
@@ -286,6 +311,16 @@ export default function Index() {
               fields={fields} 
               transactions={transactions}
               onNavigate={setActiveTab}
+              onResetAllData={handleResetAllData}
+            />
+          )}
+
+          {activeTab === 'campos' && (
+            <CamposManagement 
+              fields={fields}
+              onAddField={handleAddField}
+              onDeleteField={handleDeleteField}
+              onUpdateField={handleUpdateField}
             />
           )}
 

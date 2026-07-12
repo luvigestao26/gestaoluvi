@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   TrendingUp, 
   Calendar, 
@@ -10,10 +10,13 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Utensils,
-  Percent
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { showSuccess } from "@/utils/toast";
 
 interface DashboardOverviewProps {
   bookings: any[];
@@ -21,10 +24,19 @@ interface DashboardOverviewProps {
   fields: any[];
   transactions: any[];
   onNavigate: (tab: string) => void;
+  onResetAllData?: () => void;
 }
 
-export default function DashboardOverview({ bookings, customers, fields, transactions, onNavigate }: DashboardOverviewProps) {
+export default function DashboardOverview({ 
+  bookings, 
+  customers, 
+  fields, 
+  transactions, 
+  onNavigate,
+  onResetAllData 
+}: DashboardOverviewProps) {
   const todayStr = new Date().toISOString().split('T')[0];
+  const [resetStep, setResetStep] = useState(0); // 0 = idle, 1 = first confirm, 2 = second confirm
 
   // 1. Faturamento Campo (Total bookings revenue)
   const totalCampoRevenue = bookings.reduce((sum, b) => sum + b.price, 0);
@@ -86,20 +98,31 @@ export default function DashboardOverview({ bookings, customers, fields, transac
 
   const chartData = getChartData();
 
+  const handleResetClick = () => {
+    if (resetStep === 0) {
+      setResetStep(1);
+    } else if (resetStep === 1) {
+      setResetStep(2);
+    } else if (resetStep === 2) {
+      if (onResetAllData) {
+        onResetAllData();
+        showSuccess("Todo o painel foi resetado com sucesso!");
+      }
+      setResetStep(0);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 p-8 text-white shadow-xl border border-slate-800">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 p-8 text-white shadow-xl border border-slate-800 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
         <div className="relative z-10 max-w-2xl">
           <span className="inline-block rounded-full bg-blue-500/20 border border-blue-500/30 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-blue-300">
             Painel de Controle
           </span>
           <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
-            Bem-vindo ao ArenaGestão! ⚽🎾
+            Gestão Arenas ⚽🎾
           </h1>
-          <p className="mt-2 text-slate-300">
-            Gerencie suas quadras, agendamentos, estoque, vendas e financeiro em um único lugar com design moderno e integrado.
-          </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <button 
               onClick={() => onNavigate('calendar')}
@@ -109,6 +132,41 @@ export default function DashboardOverview({ bookings, customers, fields, transac
             </button>
           </div>
         </div>
+
+        {/* Reset Panel Button with Double Confirmation */}
+        <div className="relative z-10 flex flex-col items-end justify-center">
+          {resetStep > 0 && (
+            <div className="bg-slate-950/80 border border-rose-900 p-3 rounded-xl mb-2 text-xs text-rose-400 flex items-center gap-2 max-w-xs animate-in fade-in slide-in-from-bottom-2">
+              <AlertTriangle size={16} className="shrink-0" />
+              <span>
+                {resetStep === 1 
+                  ? "Atenção: Isso apagará todos os agendamentos, vendas e clientes. Clique novamente para confirmar." 
+                  : "ÚLTIMO AVISO: Esta ação é irreversível! Clique mais uma vez para resetar tudo."}
+              </span>
+            </div>
+          )}
+          <Button
+            onClick={handleResetClick}
+            variant={resetStep > 0 ? "destructive" : "outline"}
+            className={`rounded-xl px-4 py-2.5 flex items-center gap-2 font-bold transition-all ${
+              resetStep === 0 
+                ? "border-rose-900 text-rose-400 hover:bg-rose-950/30" 
+                : "bg-rose-600 hover:bg-rose-700 text-white"
+            }`}
+          >
+            <Trash2 size={18} />
+            {resetStep === 0 ? "Resetar Painel" : resetStep === 1 ? "Confirmar Reset" : "Confirmar Definitivamente"}
+          </Button>
+          {resetStep > 0 && (
+            <button 
+              onClick={() => setResetStep(0)}
+              className="text-xs text-slate-400 hover:text-white underline mt-1"
+            >
+              Cancelar
+            </button>
+          )}
+        </div>
+
         <div className="absolute -right-10 -bottom-10 opacity-5 transform rotate-12 pointer-events-none">
           <Activity size={300} />
         </div>

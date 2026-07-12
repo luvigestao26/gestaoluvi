@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState } from 'react';
-import { DollarSign, TrendingUp, Calendar, ArrowDownRight, ArrowUpRight, Filter } from 'lucide-react';
+import { DollarSign, TrendingUp, Calendar, ArrowDownRight, ArrowUpRight, Filter, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { showSuccess } from "@/utils/toast";
 
 interface RelatoriosManagementProps {
   bookings: any[];
@@ -83,6 +84,26 @@ export default function RelatoriosManagement({ bookings, transactions, sales, ac
 
   const chartData = getChartData();
 
+  // Export to Excel (CSV format)
+  const handleExportExcel = () => {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Data,Descricao,Categoria,Tipo,Valor (R$)\n";
+
+    filteredTransactions.forEach(t => {
+      const formattedDate = t.date.split('-').reverse().join('/');
+      csvContent += `"${formattedDate}","${t.description}","${t.category}","${t.type === 'income' ? 'Entrada' : 'Saida'}",${t.amount}\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `relatorio_financeiro_${startDate}_a_${endDate}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showSuccess("Planilha exportada com sucesso!");
+  };
+
   return (
     <div className="space-y-6">
       {/* Date Range Filter */}
@@ -107,10 +128,19 @@ export default function RelatoriosManagement({ bookings, transactions, sales, ac
             />
           </div>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-6 py-2.5 flex items-center gap-2">
-          <Filter size={18} />
-          Filtrar Período
-        </Button>
+        <div className="flex gap-2">
+          <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl px-6 py-2.5 flex items-center gap-2">
+            <Filter size={18} />
+            Filtrar Período
+          </Button>
+          <Button 
+            onClick={handleExportExcel}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl px-6 py-2.5 flex items-center gap-2"
+          >
+            <Download size={18} />
+            Baixar Planilha
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
