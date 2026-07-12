@@ -93,6 +93,12 @@ export default function Index() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // SaaS Security State
+  const [isSuperAdminUnlocked, setIsSuperAdminUnlocked] = useState(() => {
+    const saved = localStorage.getItem('ga_saas_unlocked');
+    return saved === 'true';
+  });
+
   // Impersonation state (SaaS Support Mode)
   const [impersonatedTenant, setImpersonatedTenant] = useState<any | null>(null);
 
@@ -217,6 +223,10 @@ export default function Index() {
   useEffect(() => {
     localStorage.setItem('ga_tickets', JSON.stringify(tickets));
   }, [tickets]);
+
+  useEffect(() => {
+    localStorage.setItem('ga_saas_unlocked', isSuperAdminUnlocked.toString());
+  }, [isSuperAdminUnlocked]);
 
   // Reset All Data Handler
   const handleResetAllData = () => {
@@ -494,10 +504,16 @@ export default function Index() {
     <div className="flex min-h-screen bg-slate-950 text-slate-100 relative">
       {/* Sidebar - Collapsible on Mobile */}
       <div className={`fixed inset-y-0 left-0 z-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out`}>
-        <Sidebar activeTab={activeTab} onTabChange={(tab) => {
-          setActiveTab(tab);
-          setIsSidebarOpen(false);
-        }} />
+        <Sidebar 
+          activeTab={activeTab} 
+          onTabChange={(tab) => {
+            setActiveTab(tab);
+            setIsSidebarOpen(false);
+          }} 
+          isSuperAdminUnlocked={isSuperAdminUnlocked}
+          onUnlockSuperAdmin={() => setIsSuperAdminUnlocked(true)}
+          onLockSuperAdmin={() => setIsSuperAdminUnlocked(false)}
+        />
       </div>
 
       {/* Overlay for mobile sidebar */}
