@@ -13,8 +13,11 @@ import DiaristasManagement from '@/components/DiaristasManagement';
 import RelatoriosManagement from '@/components/RelatoriosManagement';
 import CamposManagement from '@/components/CamposManagement';
 import WhatsAppSimulator from '@/components/WhatsAppSimulator';
+import Auth from '@/components/Auth';
+import { getSupabaseClient } from '@/lib/supabase';
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import { Menu, X } from 'lucide-react';
+import { Menu, Cloud, CloudLightning, CloudOff } from 'lucide-react';
+import { showSuccess, showError } from "@/utils/toast";
 
 // Mock initial data
 const INITIAL_FIELDS = [
@@ -24,9 +27,9 @@ const INITIAL_FIELDS = [
 ];
 
 const INITIAL_CUSTOMERS = [
-  { id: '1', name: 'Carlos Eduardo', phone: '(11) 98765-4321', email: 'carlos@email.com', notes: 'Prefere jogar à noite', createdAt: '2024-01-15' },
-  { id: '2', name: 'Mariana Souza', phone: '(11) 91234-5678', email: 'mariana@email.com', notes: 'Sempre paga via Pix', createdAt: '2024-02-10' },
-  { id: '3', name: 'Roberto Alencar', phone: '(11) 95555-4444', email: 'roberto@email.com', notes: '', createdAt: '2024-03-01' },
+  { id: '1', name: 'Carlos Eduardo', phone: '(11) 98765-4321', email: 'carlos@email.com', notes: 'Prefere jogar à noite', createdAt: new Date().toISOString() },
+  { id: '2', name: 'Mariana Souza', phone: '(11) 91234-5678', email: 'mariana@email.com', notes: 'Sempre paga via Pix', createdAt: new Date().toISOString() },
+  { id: '3', name: 'Roberto Alencar', phone: '(11) 95555-4444', email: 'roberto@email.com', notes: '', createdAt: new Date().toISOString() },
 ];
 
 const INITIAL_BOOKINGS = [
@@ -40,6 +43,7 @@ const INITIAL_TRANSACTIONS = [
 ];
 
 const INITIAL_SETTINGS = {
+  id: 'default',
   name: "Gestão Arenas",
   address: "Av. das Flores, 1230 - Centro",
   phone: "(11) 98888-7777",
@@ -76,143 +80,205 @@ const INITIAL_SALES = [
 export default function Index() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'pending' | 'error'>('synced');
 
-  // State initialization with localStorage persistence
-  const [fields, setFields] = useState(() => {
-    const saved = localStorage.getItem('ga_fields');
-    return saved ? JSON.parse(saved) : INITIAL_FIELDS;
-  });
-
-  const [customers, setCustomers] = useState(() => {
-    const saved = localStorage.getItem('ga_customers');
-    return saved ? JSON.parse(saved) : INITIAL_CUSTOMERS;
-  });
-
-  const [bookings, setBookings] = useState(() => {
-    const saved = localStorage.getItem('ga_bookings');
-    return saved ? JSON.parse(saved) : INITIAL_BOOKINGS;
-  });
-
-  const [transactions, setTransactions] = useState(() => {
-    const saved = localStorage.getItem('ga_transactions');
-    return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
-  });
-
-  const [settings, setSettings] = useState(() => {
-    const saved = localStorage.getItem('ga_settings');
-    return saved ? JSON.parse(saved) : INITIAL_SETTINGS;
-  });
-
-  const [blockedSlots, setBlockedSlots] = useState(() => {
-    const saved = localStorage.getItem('ga_blockedSlots');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [mensalistas, setMensalistas] = useState(() => {
-    const saved = localStorage.getItem('ga_mensalistas');
-    return saved ? JSON.parse(saved) : INITIAL_MENSALISTAS;
-  });
-
-  const [eventos, setEventos] = useState(() => {
-    const saved = localStorage.getItem('ga_eventos');
-    return saved ? JSON.parse(saved) : INITIAL_EVENTOS;
-  });
-
-  const [accountsPayable, setAccountsPayable] = useState(() => {
-    const saved = localStorage.getItem('ga_accountsPayable');
-    return saved ? JSON.parse(saved) : INITIAL_ACCOUNTS_PAYABLE;
-  });
-
-  const [products, setProducts] = useState(() => {
-    const saved = localStorage.getItem('ga_products');
-    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
-  });
-
-  const [sales, setSales] = useState(() => {
-    const saved = localStorage.getItem('ga_sales');
-    return saved ? JSON.parse(saved) : INITIAL_SALES;
-  });
-
+  // State initialization
+  const [fields, setFields] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [settings, setSettings] = useState<any>(INITIAL_SETTINGS);
+  const [blockedSlots, setBlockedSlots] = useState<any[]>([]);
+  const [mensalistas, setMensalistas] = useState<any[]>([]);
+  const [eventos, setEventos] = useState<any[]>([]);
+  const [accountsPayable, setAccountsPayable] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [sales, setSales] = useState<any[]>([]);
   const [whatsappMessage, setWhatsappMessage] = useState<string | null>(null);
 
-  // Sync states to localStorage
+  // Check active session on mount
   useEffect(() => {
-    localStorage.setItem('ga_fields', JSON.stringify(fields));
-  }, [fields]);
+    const checkSession = async () => {
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setUser(session.user);
+          await loadAllData();
+        }
+      }
+      setAuthChecked(true);
+    };
+    checkSession();
+  }, []);
 
-  useEffect(() => {
-    localStorage.setItem('ga_customers', JSON.stringify(customers));
-  }, [customers]);
+  // Load all data from individual Supabase tables
+  const loadAllData = async () => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
 
-  useEffect(() => {
-    localStorage.setItem('ga_bookings', JSON.stringify(bookings));
-  }, [bookings]);
+    setSyncing(true);
+    try {
+      // 1. Fields
+      const { data: fieldsData } = await supabase.from('fields').select('*');
+      if (fieldsData && fieldsData.length > 0) {
+        setFields(fieldsData);
+      } else {
+        // Seed initial fields
+        await supabase.from('fields').insert(INITIAL_FIELDS);
+        setFields(INITIAL_FIELDS);
+      }
 
-  useEffect(() => {
-    localStorage.setItem('ga_transactions', JSON.stringify(transactions));
-  }, [transactions]);
+      // 2. Customers
+      const { data: customersData } = await supabase.from('customers').select('*');
+      if (customersData && customersData.length > 0) {
+        setCustomers(customersData);
+      } else {
+        await supabase.from('customers').insert(INITIAL_CUSTOMERS);
+        setCustomers(INITIAL_CUSTOMERS);
+      }
 
-  useEffect(() => {
-    localStorage.setItem('ga_settings', JSON.stringify(settings));
-  }, [settings]);
+      // 3. Bookings
+      const { data: bookingsData } = await supabase.from('bookings').select('*');
+      if (bookingsData) setBookings(bookingsData);
 
-  useEffect(() => {
-    localStorage.setItem('ga_blockedSlots', JSON.stringify(blockedSlots));
-  }, [blockedSlots]);
+      // 4. Transactions
+      const { data: transactionsData } = await supabase.from('transactions').select('*');
+      if (transactionsData) setTransactions(transactionsData);
 
-  useEffect(() => {
-    localStorage.setItem('ga_mensalistas', JSON.stringify(mensalistas));
-  }, [mensalistas]);
+      // 5. Settings
+      const { data: settingsData } = await supabase.from('settings').select('*').eq('id', 'default').single();
+      if (settingsData) {
+        setSettings(settingsData);
+      } else {
+        await supabase.from('settings').insert(INITIAL_SETTINGS);
+        setSettings(INITIAL_SETTINGS);
+      }
 
-  useEffect(() => {
-    localStorage.setItem('ga_eventos', JSON.stringify(eventos));
-  }, [eventos]);
+      // 6. Blocked Slots
+      const { data: blockedData } = await supabase.from('blocked_slots').select('*');
+      if (blockedData) setBlockedSlots(blockedData);
 
-  useEffect(() => {
-    localStorage.setItem('ga_accountsPayable', JSON.stringify(accountsPayable));
-  }, [accountsPayable]);
+      // 7. Mensalistas
+      const { data: mensalistasData } = await supabase.from('mensalistas').select('*');
+      if (mensalistasData) setMensalistas(mensalistasData);
 
-  useEffect(() => {
-    localStorage.setItem('ga_products', JSON.stringify(products));
-  }, [products]);
+      // 8. Eventos
+      const { data: eventosData } = await supabase.from('eventos').select('*');
+      if (eventosData) setEventos(eventosData);
 
-  useEffect(() => {
-    localStorage.setItem('ga_sales', JSON.stringify(sales));
-  }, [sales]);
+      // 9. Accounts Payable
+      const { data: payableData } = await supabase.from('accounts_payable').select('*');
+      if (payableData) setAccountsPayable(payableData);
 
-  // Reset All Data Handler
-  const handleResetAllData = () => {
+      // 10. Products
+      const { data: productsData } = await supabase.from('products').select('*');
+      if (productsData && productsData.length > 0) {
+        setProducts(productsData);
+      } else {
+        await supabase.from('products').insert(INITIAL_PRODUCTS);
+        setProducts(INITIAL_PRODUCTS);
+      }
+
+      // 11. Sales
+      const { data: salesData } = await supabase.from('sales').select('*');
+      if (salesData) setSales(salesData);
+
+      setSyncStatus('synced');
+    } catch (err) {
+      console.error("Erro ao carregar dados do Supabase:", err);
+      setSyncStatus('error');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+    setUser(null);
+    setFields([]);
+    setCustomers([]);
     setBookings([]);
     setTransactions([]);
-    setSales([]);
+    setSettings(INITIAL_SETTINGS);
+    setBlockedSlots([]);
     setMensalistas([]);
     setEventos([]);
     setAccountsPayable([]);
-    setBlockedSlots([]);
-    setFields(INITIAL_FIELDS);
-    setProducts(INITIAL_PRODUCTS);
-    setCustomers(INITIAL_CUSTOMERS);
-    localStorage.clear();
+    setProducts([]);
+    setSales([]);
+    showSuccess("Sessão encerrada com sucesso!");
+  };
+
+  // Reset All Data Handler
+  const handleResetAllData = async () => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+
+    setSyncStatus('pending');
+    try {
+      await supabase.from('bookings').delete().neq('id', '0');
+      await supabase.from('transactions').delete().neq('id', '0');
+      await supabase.from('sales').delete().neq('id', '0');
+      await supabase.from('mensalistas').delete().neq('id', '0');
+      await supabase.from('eventos').delete().neq('id', '0');
+      await supabase.from('accounts_payable').delete().neq('id', '0');
+      await supabase.from('blocked_slots').delete().neq('id', '0');
+      
+      setBookings([]);
+      setTransactions([]);
+      setSales([]);
+      setMensalistas([]);
+      setEventos([]);
+      setAccountsPayable([]);
+      setBlockedSlots([]);
+      setSyncStatus('synced');
+      showSuccess("Todos os dados foram resetados no Supabase!");
+    } catch (err) {
+      console.error(err);
+      setSyncStatus('error');
+    }
   };
 
   // Campos Handlers
-  const handleAddField = (newField: any) => {
+  const handleAddField = async (newField: any) => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase.from('fields').insert(newField);
+    }
     setFields([...fields, newField]);
   };
 
-  const handleDeleteField = (id: string) => {
+  const handleDeleteField = async (id: string) => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase.from('fields').delete().eq('id', id);
+    }
     setFields(fields.filter(f => f.id !== id));
   };
 
-  const handleUpdateField = (updatedField: any) => {
+  const handleUpdateField = async (updatedField: any) => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase.from('fields').update(updatedField).eq('id', updatedField.id);
+    }
     setFields(fields.map(f => f.id === updatedField.id ? updatedField : f));
   };
 
   // Booking Handlers
-  const handleAddBooking = (newBooking: any) => {
+  const handleAddBooking = async (newBooking: any) => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase.from('bookings').insert(newBooking);
+    }
     setBookings([newBooking, ...bookings]);
     
-    // Automatically add to transactions if paid
     if (newBooking.paid) {
       const newTransaction = {
         id: Date.now().toString() + '-t',
@@ -223,21 +289,28 @@ export default function Index() {
         date: newBooking.date,
         paymentMethod: newBooking.paymentMethod || 'Pix'
       };
+      if (supabase) {
+        await supabase.from('transactions').insert(newTransaction);
+      }
       setTransactions([newTransaction, ...transactions]);
     }
 
-    // Trigger WhatsApp Simulation
     const formattedDate = newBooking.date.split('-').reverse().join('/');
     const msg = `Olá, *${newBooking.customerName}*!\n\nSua reserva na *${settings.name}* foi confirmada com sucesso! 🎉\n\n📅 *Data:* ${formattedDate}\n⏰ *Horário:* ${newBooking.timeSlot}\n🏟️ *Quadra:* ${newBooking.fieldName}\n💵 *Valor:* R$ ${newBooking.price.toFixed(2)}\n🚦 *Status:* ${newBooking.paid ? '✅ Pago' : '⏳ Pendente de Pagamento'}\n\n_Chave Pix para pagamento:_ ${settings.pixKey} (${settings.bankName})\n\nObrigado e bom jogo! ⚽🎾`;
     setWhatsappMessage(msg);
   };
 
-  const handleDeleteBooking = (id: string) => {
+  const handleDeleteBooking = async (id: string) => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase.from('bookings').delete().eq('id', id);
+    }
     setBookings(bookings.filter(b => b.id !== id));
   };
 
-  const handleTogglePaid = (id: string) => {
-    setBookings(bookings.map(b => {
+  const handleTogglePaid = async (id: string) => {
+    const supabase = getSupabaseClient();
+    const updatedBookings = bookings.map(b => {
       if (b.id === id) {
         const updatedPaid = !b.paid;
         if (updatedPaid) {
@@ -250,32 +323,50 @@ export default function Index() {
             date: b.date,
             paymentMethod: b.paymentMethod || 'Pix'
           };
+          if (supabase) {
+            supabase.from('transactions').insert(newTransaction).then();
+          }
           setTransactions(prev => [newTransaction, ...prev]);
 
           const formattedDate = b.date.split('-').reverse().join('/');
           const msg = `Olá, *${b.customerName}*!\n\nConfirmamos o recebimento do seu pagamento para a reserva do dia *${formattedDate}* às *${b.timeSlot}* na *${b.fieldName}*! 💵✅\n\nTudo pronto para o seu jogo. Nos vemos na *${settings.name}*! ⚽🎾`;
           setWhatsappMessage(msg);
         }
+        if (supabase) {
+          supabase.from('bookings').update({ paid: updatedPaid }).eq('id', id).then();
+        }
         return { ...b, paid: updatedPaid };
       }
       return b;
-    }));
+    });
+    setBookings(updatedBookings);
   };
 
   // Block Slot Handlers
-  const handleBlockSlot = (newBlock: any) => {
+  const handleBlockSlot = async (newBlock: any) => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase.from('blocked_slots').insert(newBlock);
+    }
     setBlockedSlots([...blockedSlots, newBlock]);
   };
 
-  const handleUnblockSlot = (id: string) => {
+  const handleUnblockSlot = async (id: string) => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase.from('blocked_slots').delete().eq('id', id);
+    }
     setBlockedSlots(blockedSlots.filter(b => b.id !== id));
   };
 
   // Mensalista Handlers
-  const handleAddMensalista = (newMensalista: any) => {
+  const handleAddMensalista = async (newMensalista: any) => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase.from('mensalistas').insert(newMensalista);
+    }
     setMensalistas([...mensalistas, newMensalista]);
     
-    // Automatically add to transactions as income
     const newTransaction = {
       id: Date.now().toString() + '-m',
       description: `Mensalidade: ${newMensalista.customerName}`,
@@ -285,19 +376,38 @@ export default function Index() {
       date: new Date().toISOString().split('T')[0],
       paymentMethod: newMensalista.paymentMethod || 'Pix'
     };
+    if (supabase) {
+      await supabase.from('transactions').insert(newTransaction);
+    }
     setTransactions([newTransaction, ...transactions]);
   };
 
-  const handleDeleteMensalista = (id: string) => {
+  const handleDeleteMensalista = async (id: string) => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase.from('mensalistas').delete().eq('id', id);
+    }
     setMensalistas(mensalistas.filter(m => m.id !== id));
   };
 
-  const handleToggleMensalistaActive = (id: string) => {
-    setMensalistas(mensalistas.map(m => m.id === id ? { ...m, active: !m.active } : m));
+  const handleToggleMensalistaActive = async (id: string) => {
+    const target = mensalistas.find(m => m.id === id);
+    if (target) {
+      const updatedActive = !target.active;
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        await supabase.from('mensalistas').update({ active: updatedActive }).eq('id', id);
+      }
+      setMensalistas(mensalistas.map(m => m.id === id ? { ...m, active: updatedActive } : m));
+    }
   };
 
   // Event Handlers
-  const handleAddEvento = (newEvento: any) => {
+  const handleAddEvento = async (newEvento: any) => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase.from('eventos').insert(newEvento);
+    }
     setEventos([...eventos, newEvento]);
     const newTransaction = {
       id: Date.now().toString() + '-ev',
@@ -308,70 +418,109 @@ export default function Index() {
       date: newEvento.date,
       paymentMethod: newEvento.paymentMethod || 'Pix'
     };
+    if (supabase) {
+      await supabase.from('transactions').insert(newTransaction);
+    }
     setTransactions([newTransaction, ...transactions]);
   };
 
-  const handleDeleteEvento = (id: string) => {
+  const handleDeleteEvento = async (id: string) => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase.from('eventos').delete().eq('id', id);
+    }
     setEventos(eventos.filter(e => e.id !== id));
   };
 
   // Accounts Payable Handlers
-  const handleAddAccount = (newAccount: any) => {
+  const handleAddAccount = async (newAccount: any) => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase.from('accounts_payable').insert(newAccount);
+    }
     setAccountsPayable([...accountsPayable, newAccount]);
   };
 
-  const handleDeleteAccount = (id: string) => {
+  const handleDeleteAccount = async (id: string) => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase.from('accounts_payable').delete().eq('id', id);
+    }
     setAccountsPayable(accountsPayable.filter(a => a.id !== id));
   };
 
-  const handleTogglePaidStatus = (id: string) => {
-    setAccountsPayable(accountsPayable.map(a => {
-      if (a.id === id) {
-        const updatedStatus = a.status === 'paid' ? 'pending' : 'paid';
-        if (updatedStatus === 'paid') {
-          const newTransaction = {
-            id: Date.now().toString() + '-ap',
-            description: `Pagamento: ${a.description}`,
-            amount: a.amount,
-            type: 'expense',
-            category: a.category,
-            date: new Date().toISOString().split('T')[0],
-            paymentMethod: 'Pix'
-          };
-          setTransactions(prev => [newTransaction, ...prev]);
-        }
-        return { ...a, status: updatedStatus };
+  const handleTogglePaidStatus = async (id: string) => {
+    const target = accountsPayable.find(a => a.id === id);
+    if (target) {
+      const updatedStatus = target.status === 'paid' ? 'pending' : 'paid';
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        await supabase.from('accounts_payable').update({ status: updatedStatus }).eq('id', id);
       }
-      return a;
-    }));
+      if (updatedStatus === 'paid') {
+        const newTransaction = {
+          id: Date.now().toString() + '-ap',
+          description: `Pagamento: ${target.description}`,
+          amount: target.amount,
+          type: 'expense',
+          category: target.category,
+          date: new Date().toISOString().split('T')[0],
+          paymentMethod: 'Pix'
+        };
+        if (supabase) {
+          await supabase.from('transactions').insert(newTransaction);
+        }
+        setTransactions(prev => [newTransaction, ...prev]);
+      }
+      setAccountsPayable(accountsPayable.map(a => a.id === id ? { ...a, status: updatedStatus } : a));
+    }
   };
 
   // Estoque Handlers
-  const handleAddProduct = (newProduct: any) => {
+  const handleAddProduct = async (newProduct: any) => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase.from('products').insert(newProduct);
+    }
     setProducts([...products, newProduct]);
   };
 
-  const handleDeleteProduct = (id: string) => {
+  const handleDeleteProduct = async (id: string) => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase.from('products').delete().eq('id', id);
+    }
     setProducts(products.filter(p => p.id !== id));
   };
 
-  const handleUpdateProduct = (updatedProduct: any) => {
+  const handleUpdateProduct = async (updatedProduct: any) => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase.from('products').update(updatedProduct).eq('id', updatedProduct.id);
+    }
     setProducts(products.map(p => p.id === updatedProduct.id ? updatedProduct : p));
   };
 
   // Vendas Handlers
-  const handleAddSale = (newSale: any) => {
+  const handleAddSale = async (newSale: any) => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase.from('sales').insert(newSale);
+    }
     setSales([newSale, ...sales]);
     
-    // Deduct from stock
-    setProducts(prevProducts => prevProducts.map(p => {
+    const updatedProducts = products.map(p => {
       if (p.id === newSale.productId) {
-        return { ...p, quantity: p.quantity - newSale.quantity };
+        const newQty = p.quantity - newSale.quantity;
+        if (supabase) {
+          supabase.from('products').update({ quantity: newQty }).eq('id', p.id).then();
+        }
+        return { ...p, quantity: newQty };
       }
       return p;
-    }));
+    });
+    setProducts(updatedProducts);
 
-    // Add to transactions
     const newTransaction = {
       id: Date.now().toString() + '-sale',
       description: `Venda: ${newSale.productName} (${newSale.quantity}x)`,
@@ -381,31 +530,67 @@ export default function Index() {
       date: newSale.date,
       paymentMethod: newSale.paymentMethod || 'Pix'
     };
+    if (supabase) {
+      await supabase.from('transactions').insert(newTransaction);
+    }
     setTransactions(prev => [newTransaction, ...prev]);
   };
 
-  const handleDeleteSale = (id: string) => {
+  const handleDeleteSale = async (id: string) => {
     const sale = sales.find(s => s.id === id);
+    const supabase = getSupabaseClient();
     if (sale) {
-      // Return to stock
-      setProducts(prevProducts => prevProducts.map(p => {
+      const updatedProducts = products.map(p => {
         if (p.id === sale.productId) {
-          return { ...p, quantity: p.quantity + sale.quantity };
+          const newQty = p.quantity + sale.quantity;
+          if (supabase) {
+            supabase.from('products').update({ quantity: newQty }).eq('id', p.id).then();
+          }
+          return { ...p, quantity: newQty };
         }
         return p;
-      }));
+      });
+      setProducts(updatedProducts);
+    }
+    if (supabase) {
+      await supabase.from('sales').delete().eq('id', id);
     }
     setSales(sales.filter(s => s.id !== id));
   };
+
+  // If auth is not checked yet, show a loading spinner
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-100">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="text-sm text-slate-400">Carregando painel...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is not logged in, show the Auth screen
+  if (!user) {
+    return <Auth onAuthSuccess={(loggedInUser) => {
+      setUser(loggedInUser);
+      loadAllData();
+    }} />;
+  }
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-100 relative">
       {/* Sidebar - Collapsible on Mobile */}
       <div className={`fixed inset-y-0 left-0 z-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out`}>
-        <Sidebar activeTab={activeTab} onTabChange={(tab) => {
-          setActiveTab(tab);
-          setIsSidebarOpen(false);
-        }} />
+        <Sidebar 
+          activeTab={activeTab} 
+          onTabChange={(tab) => {
+            setActiveTab(tab);
+            setIsSidebarOpen(false);
+          }} 
+          userEmail={user.email}
+          onLogout={handleLogout}
+        />
       </div>
 
       {/* Overlay for mobile sidebar */}
@@ -433,7 +618,27 @@ export default function Index() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-xs text-slate-500 hidden sm:inline">Última sincronização: Agora mesmo</span>
+            {/* Cloud Sync Status Indicator */}
+            <div className="flex items-center gap-1.5 text-xs font-semibold">
+              {syncStatus === 'synced' && (
+                <span className="flex items-center gap-1 text-emerald-400 bg-emerald-950/40 border border-emerald-900/50 px-2.5 py-1 rounded-lg">
+                  <Cloud size={14} />
+                  Nuvem Sincronizada
+                </span>
+              )}
+              {syncStatus === 'pending' && (
+                <span className="flex items-center gap-1 text-amber-400 bg-amber-950/40 border border-amber-900/50 px-2.5 py-1 rounded-lg animate-pulse">
+                  <CloudLightning size={14} />
+                  Salvando alterações...
+                </span>
+              )}
+              {syncStatus === 'error' && (
+                <span className="flex items-center gap-1 text-rose-400 bg-rose-950/40 border border-rose-900/50 px-2.5 py-1 rounded-lg">
+                  <CloudOff size={14} />
+                  Erro de Sincronização
+                </span>
+              )}
+            </div>
           </div>
         </header>
 

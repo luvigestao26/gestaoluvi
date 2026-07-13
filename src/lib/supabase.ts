@@ -1,19 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
-
-// Tenta obter das variáveis de ambiente do Vite
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || localStorage.getItem('custom_supabase_url') || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || localStorage.getItem('custom_supabase_anon_key') || '';
+import { supabase } from "../integrations/supabase/client";
 
 export const isSupabaseConfigured = () => {
-  return supabaseUrl.length > 0 && supabaseAnonKey.length > 0;
+  return true; // Sempre configurado agora com o cliente oficial integrado
 };
 
 export const getSupabaseClient = () => {
-  const url = import.meta.env.VITE_SUPABASE_URL || localStorage.getItem('custom_supabase_url') || '';
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY || localStorage.getItem('custom_supabase_anon_key') || '';
-  
-  if (!url || !key) return null;
-  return createClient(url, key);
+  return supabase;
 };
 
 export const saveCustomCredentials = (url: string, key: string) => {
