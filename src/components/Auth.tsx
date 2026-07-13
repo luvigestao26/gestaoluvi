@@ -14,7 +14,7 @@ interface AuthProps {
 }
 
 export default function Auth({ onAuthSuccess }: AuthProps) {
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,14 +29,27 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
 
     setLoading(true);
     try {
-      if (isSignUp) {
+      if (activeTab === 'register') {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: window.location.origin,
+          }
         });
         if (error) throw error;
-        showSuccess("Conta criada com sucesso! Você já pode fazer login.");
-        setIsSignUp(false);
+        
+        // Se o usuário foi criado e já logado automaticamente (ou se precisa confirmar e-mail)
+        if (data.user) {
+          showSuccess("Conta criada com sucesso! Se o e-mail de confirmação estiver ativo, verifique sua caixa de entrada.");
+          // Tenta logar automaticamente se a sessão já estiver ativa
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (sessionData.session?.user) {
+            onAuthSuccess(sessionData.session.user);
+          } else {
+            setActiveTab('login');
+          }
+        }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
@@ -69,15 +82,45 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
 
         {/* Auth Card */}
         <Card className="border-slate-800 bg-slate-900 shadow-xl rounded-3xl overflow-hidden">
+          {/* Custom Tab Switcher */}
+          <div className="p-4 bg-slate-950/50 border-b border-slate-800/60 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab('login')}
+              className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'login'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+              }`}
+            >
+              <LogIn size={16} />
+              Entrar
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('register')}
+              className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'register'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+              }`}
+            >
+              <UserPlus size={16} />
+              Cadastrar
+            </button>
+          </div>
+
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl font-bold text-white flex items-center gap-2">
-              {isSignUp ? <UserPlus className="text-blue-500" size={20} /> : <LogIn className="text-blue-500" size={20} />}
-              {isSignUp ? "Criar uma nova conta" : "Acessar sua conta"}
+            <CardTitle className="text-xl font-bold text-white">
+              {activeTab === 'register' ? "Criar uma nova conta" : "Acessar sua conta"}
             </CardTitle>
             <CardDescription className="text-slate-400">
-              {isSignUp ? "Cadastre-se para salvar seus dados na nuvem" : "Entre para sincronizar seus agendamentos e finanças"}
+              {activeTab === 'register' 
+                ? "Cadastre-se para salvar seus dados na nuvem com segurança" 
+                : "Entre para sincronizar seus agendamentos, vendas e finanças"}
             </CardDescription>
           </CardHeader>
+
           <CardContent className="space-y-4">
             <form onSubmit={handleAuth} className="space-y-4">
               <div className="space-y-1.5">
@@ -117,19 +160,9 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                 disabled={loading}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl py-2.5 shadow-lg shadow-blue-600/20 transition-all"
               >
-                {loading ? "Carregando..." : isSignUp ? "Cadastrar" : "Entrar"}
+                {loading ? "Carregando..." : activeTab === 'register' ? "Criar Conta" : "Entrar"}
               </Button>
             </form>
-
-            <div className="text-center pt-2">
-              <button
-                type="button"
-                onClick={() => setIsSignUp(!isSignUp)}
-                className="text-xs text-blue-400 hover:text-blue-300 hover:underline font-semibold"
-              >
-                {isSignUp ? "Já tem uma conta? Faça login" : "Não tem uma conta? Cadastre-se"}
-              </button>
-            </div>
           </CardContent>
         </Card>
       </div>
