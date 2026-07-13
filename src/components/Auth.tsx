@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState } from 'react';
-import { getSupabaseClient, isSupabaseConfigured, saveCustomCredentials } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Lock, Mail, UserPlus, LogIn, Database, AlertCircle } from 'lucide-react';
+import { Lock, Mail, UserPlus, LogIn } from 'lucide-react';
 import { showSuccess, showError } from "@/utils/toast";
 
 interface AuthProps {
@@ -19,16 +19,11 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Supabase manual config states
-  const [showConfig, setShowConfig] = useState(!isSupabaseConfigured());
-  const [customUrl, setCustomUrl] = useState(localStorage.getItem('custom_supabase_url') || '');
-  const [customKey, setCustomKey] = useState(localStorage.getItem('custom_supabase_anon_key') || '');
-
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     const supabase = getSupabaseClient();
     if (!supabase) {
-      showError("Supabase não está configurado. Configure as credenciais abaixo.");
+      showError("Erro de conexão com o banco de dados.");
       return;
     }
 
@@ -58,16 +53,6 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSaveConfig = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customUrl || !customKey) {
-      showError("Preencha a URL e a Anon Key do Supabase.");
-      return;
-    }
-    saveCustomCredentials(customUrl, customKey);
-    showSuccess("Configurações do Supabase salvas! A página será recarregada.");
   };
 
   return (
@@ -147,60 +132,6 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
             </div>
           </CardContent>
         </Card>
-
-        {/* Supabase Connection Config Panel */}
-        <div className="border border-slate-800 bg-slate-900/50 rounded-2xl p-4 space-y-3">
-          <button
-            type="button"
-            onClick={() => setShowConfig(!showConfig)}
-            className="w-full flex items-center justify-between text-xs text-slate-400 hover:text-white font-semibold"
-          >
-            <span className="flex items-center gap-1.5">
-              <Database size={14} className="text-blue-400" />
-              Configurações de Conexão Supabase
-            </span>
-            <span>{showConfig ? "Ocultar" : "Mostrar"}</span>
-          </button>
-
-          {showConfig && (
-            <form onSubmit={handleSaveConfig} className="space-y-3 pt-2 border-t border-slate-800/60 animate-in fade-in duration-200">
-              <div className="flex items-start gap-2 bg-blue-950/40 border border-blue-900/50 p-2.5 rounded-xl text-[11px] text-blue-300">
-                <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                <span>Insira as credenciais do seu projeto Supabase para salvar os dados de forma permanente e segura.</span>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="supabaseUrl" className="text-[11px] text-slate-400 font-semibold">SUPABASE_URL</Label>
-                <Input
-                  id="supabaseUrl"
-                  placeholder="https://xxxxxx.supabase.co"
-                  value={customUrl}
-                  onChange={(e) => setCustomUrl(e.target.value)}
-                  className="h-8 text-xs rounded-lg border-slate-800 bg-slate-950 text-white"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="supabaseKey" className="text-[11px] text-slate-400 font-semibold">SUPABASE_ANON_KEY</Label>
-                <Input
-                  id="supabaseKey"
-                  placeholder="eyJhbGciOi..."
-                  value={customKey}
-                  onChange={(e) => setCustomKey(e.target.value)}
-                  className="h-8 text-xs rounded-lg border-slate-800 bg-slate-950 text-white"
-                />
-              </div>
-
-              <Button
-                type="submit"
-                size="sm"
-                className="w-full bg-slate-800 hover:bg-slate-700 text-white text-xs rounded-lg h-8"
-              >
-                Salvar e Conectar
-              </Button>
-            </form>
-          )}
-        </div>
       </div>
     </div>
   );
