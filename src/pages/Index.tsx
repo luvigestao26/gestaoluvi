@@ -16,8 +16,9 @@ import SettingsManagement from '@/components/SettingsManagement';
 import WhatsAppSimulator from '@/components/WhatsAppSimulator';
 import AuthScreen from '@/components/AuthScreen';
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import { Menu } from 'lucide-react';
-import { showSuccess } from '@/utils/toast';
+import { Menu, Cloud, CloudOff } from 'lucide-react';
+import { showSuccess, showError } from '@/utils/toast';
+import { useSupabaseSync } from '@/hooks/useSupabaseSync';
 
 // Mock initial data
 const INITIAL_FIELDS = [
@@ -79,6 +80,9 @@ const INITIAL_SALES = [
 export default function Index() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Supabase Sync Hook
+  const { isConfigured, loadTable, saveItem, deleteItem, loadSettings } = useSupabaseSync();
 
   // Auth State
   const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(() => {
@@ -144,7 +148,52 @@ export default function Index() {
 
   const [whatsappMessage, setWhatsappMessage] = useState<string | null>(null);
 
-  // Sync states to localStorage
+  // Load data from Supabase if configured
+  useEffect(() => {
+    if (isConfigured) {
+      const fetchDbData = async () => {
+        try {
+          const dbFields = await loadTable('fields');
+          if (dbFields) setFields(dbFields);
+
+          const dbCustomers = await loadTable('customers');
+          if (dbCustomers) setCustomers(dbCustomers);
+
+          const dbBookings = await loadTable('bookings');
+          if (dbBookings) setBookings(dbBookings);
+
+          const dbTransactions = await loadTable('transactions');
+          if (dbTransactions) setTransactions(dbTransactions);
+
+          const dbSettings = await loadSettings();
+          if (dbSettings) setSettings(dbSettings);
+
+          const dbBlocked = await loadTable('blocked_slots');
+          if (dbBlocked) setBlockedSlots(dbBlocked);
+
+          const dbMensalistas = await loadTable('mensalistas');
+          if (dbMensalistas) setMensalistas(dbMensalistas);
+
+          const dbEventos = await loadTable('eventos');
+          if (dbEventos) setEventos(dbEventos);
+
+          const dbPayable = await loadTable('accounts_payable');
+          if (dbPayable) setAccountsPayable(dbPayable);
+
+          const dbProducts = await loadTable('products');
+          if (dbProducts) setProducts(dbProducts);
+
+          const dbSales = await loadTable('sales');
+          if (dbSales) setSales(dbSales);
+        } catch (err) {
+          console.error("Erro ao sincronizar dados iniciais com o Supabase:", err);
+        }
+      };
+      fetchDbData();
+    }
+  }, [isConfigured]);
+
+  // Sync states to localStorage (as fallback)
   useEffect(() => {
     localStorage.setItem('ga_fields', JSON.stringify(fields));
   }, [fields]);
@@ -197,7 +246,17 @@ export default function Index() {
   };
 
   // Reset All Data Handler
-  const handleResetAllData = () => {
+  const handleResetAllData = async () => {
+    if (isConfigured) {
+      // Delete from Supabase
+      for (const b of bookings) await deleteItem('bookings', b.id);
+      for (const t of transactions) await deleteItem('transactions', t.id);
+      for (const s of sales) await deleteItem('sales', s.id);
+      for (const m of mensalistas) await deleteItem('mensalistas', m.id);
+      for (const e of eventos) await deleteItem('eventos', e.id);
+      for (const ap of accountsPayable) await deleteItem('accounts_payable', ap.id);
+      for (const bs of blockedSlots) await deleteItem('blocked_slots', bs.id);
+    }
     setBookings([]);
     setTransactions([]);
     setSales([]);
@@ -212,21 +271,33 @@ export default function Index() {
   };
 
   // Campos Handlers
-  const handleAddField = (newField: any) => {
+  const handleAddField = async (newField: any) => {
     setFields([...fields, newField]);
+    if (isConfigured) {
+      await saveItem('fields', newField);
+    }
   };
 
-  const handleDeleteField = (id: string) => {
+  const handleDeleteField = async (id: string) => {
     setFields(fields.filter(f => f.id !== id));
+    if (isConfigured) {
+      await deleteItem('fields', id);
+    }
   };
 
-  const handleUpdateField = (updatedField: any) => {
+  const handleUpdateField = async (updatedField: any) => {
     setFields(fields.map(f => f.id === updatedField.id ? updatedField : f));
+    if (isConfigured) {
+      await saveItem('fields', updatedField);
+    }
   };
 
   // Booking Handlers
-  const handleAddBooking = (newBooking: any) => {
+  const handleAddBooking = async (newBooking: any) => {
     setBookings([newBooking, ...bookings]);
+    if (isConfigured) {
+      await saveItem('bookings', newBooking);
+    }
     
     // Automatically add to transactions if paid
     if (newBooking.paid) {
@@ -240,6 +311,9 @@ export default function Index() {
         paymentMethod: newBooking.paymentMethod || 'Pix'
       };
       setTransactions([newTransaction, ...transactions]);
+      if (isConfigured) {
+        await saveItem('transactions', newTransaction);
+      }
     }
 
     // Trigger WhatsApp Simulation
@@ -248,14 +322,23 @@ export default function Index() {
     setWhatsappMessage(msg);
   };
 
-  const handleDeleteBooking = (id: string) => {
+  const handleDeleteBooking = async (id: string) => {
     setBookings(bookings.filter(b => b.id !== id));
+    if (isConfigured) {
+      await deleteItem('bookings', id);
+    }
   };
 
-  const handleTogglePaid = (id: string) => {
+  const handleTogglePaid = async (id: string) => {
     setBookings(bookings.map(b => {
       if (b.id === id) {
         const updatedPaid = !b.paid;
+        const updatedBooking = { ...b, paid: updatedPaid };
+        
+        if (isConfigured) {
+          saveItem('bookings', updatedBooking);
+        }
+
         if (updatedPaid) {
           const newTransaction = {
             id: Date.now().toString() + '-t',
@@ -267,29 +350,41 @@ export default function Index() {
             paymentMethod: b.paymentMethod || 'Pix'
           };
           setTransactions(prev => [newTransaction, ...prev]);
+          if (isConfigured) {
+            saveItem('transactions', newTransaction);
+          }
 
           const formattedDate = b.date.split('-').reverse().join('/');
           const msg = `Olá, *${b.customerName}*!\n\nConfirmamos o recebimento do seu pagamento para a reserva do dia *${formattedDate}* às *${b.timeSlot}* na *${b.fieldName}*! 💵✅\n\nTudo pronto para o seu jogo. Nos vemos na *${settings.name}*! ⚽🎾`;
           setWhatsappMessage(msg);
         }
-        return { ...b, paid: updatedPaid };
+        return updatedBooking;
       }
       return b;
     }));
   };
 
   // Block Slot Handlers
-  const handleBlockSlot = (newBlock: any) => {
+  const handleBlockSlot = async (newBlock: any) => {
     setBlockedSlots([...blockedSlots, newBlock]);
+    if (isConfigured) {
+      await saveItem('blocked_slots', newBlock);
+    }
   };
 
-  const handleUnblockSlot = (id: string) => {
+  const handleUnblockSlot = async (id: string) => {
     setBlockedSlots(blockedSlots.filter(b => b.id !== id));
+    if (isConfigured) {
+      await deleteItem('blocked_slots', id);
+    }
   };
 
   // Mensalista Handlers
-  const handleAddMensalista = (newMensalista: any) => {
+  const handleAddMensalista = async (newMensalista: any) => {
     setMensalistas([...mensalistas, newMensalista]);
+    if (isConfigured) {
+      await saveItem('mensalistas', newMensalista);
+    }
     
     // Automatically add to transactions as income
     const newTransaction = {
@@ -302,19 +397,37 @@ export default function Index() {
       paymentMethod: newMensalista.paymentMethod || 'Pix'
     };
     setTransactions([newTransaction, ...transactions]);
+    if (isConfigured) {
+      await saveItem('transactions', newTransaction);
+    }
   };
 
-  const handleDeleteMensalista = (id: string) => {
+  const handleDeleteMensalista = async (id: string) => {
     setMensalistas(mensalistas.filter(m => m.id !== id));
+    if (isConfigured) {
+      await deleteItem('mensalistas', id);
+    }
   };
 
-  const handleToggleMensalistaActive = (id: string) => {
-    setMensalistas(mensalistas.map(m => m.id === id ? { ...m, active: !m.active } : m));
+  const handleToggleMensalistaActive = async (id: string) => {
+    setMensalistas(mensalistas.map(m => {
+      if (m.id === id) {
+        const updated = { ...m, active: !m.active };
+        if (isConfigured) {
+          saveItem('mensalistas', updated);
+        }
+        return updated;
+      }
+      return m;
+    }));
   };
 
   // Event Handlers
-  const handleAddEvento = (newEvento: any) => {
+  const handleAddEvento = async (newEvento: any) => {
     setEventos([...eventos, newEvento]);
+    if (isConfigured) {
+      await saveItem('eventos', newEvento);
+    }
     const newTransaction = {
       id: Date.now().toString() + '-ev',
       description: `Evento: ${newEvento.title}`,
@@ -325,25 +438,43 @@ export default function Index() {
       paymentMethod: newEvento.paymentMethod || 'Pix'
     };
     setTransactions([newTransaction, ...transactions]);
+    if (isConfigured) {
+      await saveItem('transactions', newTransaction);
+    }
   };
 
-  const handleDeleteEvento = (id: string) => {
+  const handleDeleteEvento = async (id: string) => {
     setEventos(eventos.filter(e => e.id !== id));
+    if (isConfigured) {
+      await deleteItem('eventos', id);
+    }
   };
 
   // Accounts Payable Handlers
-  const handleAddAccount = (newAccount: any) => {
+  const handleAddAccount = async (newAccount: any) => {
     setAccountsPayable([...accountsPayable, newAccount]);
+    if (isConfigured) {
+      await saveItem('accounts_payable', newAccount);
+    }
   };
 
-  const handleDeleteAccount = (id: string) => {
+  const handleDeleteAccount = async (id: string) => {
     setAccountsPayable(accountsPayable.filter(a => a.id !== id));
+    if (isConfigured) {
+      await deleteItem('accounts_payable', id);
+    }
   };
 
-  const handleTogglePaidStatus = (id: string) => {
+  const handleTogglePaidStatus = async (id: string) => {
     setAccountsPayable(accountsPayable.map(a => {
       if (a.id === id) {
         const updatedStatus = a.status === 'paid' ? 'pending' : 'paid';
+        const updatedAccount = { ...a, status: updatedStatus };
+        
+        if (isConfigured) {
+          saveItem('accounts_payable', updatedAccount);
+        }
+
         if (updatedStatus === 'paid') {
           const newTransaction = {
             id: Date.now().toString() + '-ap',
@@ -355,34 +486,53 @@ export default function Index() {
             paymentMethod: 'Pix'
           };
           setTransactions(prev => [newTransaction, ...prev]);
+          if (isConfigured) {
+            saveItem('transactions', newTransaction);
+          }
         }
-        return { ...a, status: updatedStatus };
+        return updatedAccount;
       }
       return a;
     }));
   };
 
   // Estoque Handlers
-  const handleAddProduct = (newProduct: any) => {
+  const handleAddProduct = async (newProduct: any) => {
     setProducts([...products, newProduct]);
+    if (isConfigured) {
+      await saveItem('products', newProduct);
+    }
   };
 
-  const handleDeleteProduct = (id: string) => {
+  const handleDeleteProduct = async (id: string) => {
     setProducts(products.filter(p => p.id !== id));
+    if (isConfigured) {
+      await deleteItem('products', id);
+    }
   };
 
-  const handleUpdateProduct = (updatedProduct: any) => {
+  const handleUpdateProduct = async (updatedProduct: any) => {
     setProducts(products.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+    if (isConfigured) {
+      await saveItem('products', updatedProduct);
+    }
   };
 
   // Vendas Handlers
-  const handleAddSale = (newSale: any) => {
+  const handleAddSale = async (newSale: any) => {
     setSales([newSale, ...sales]);
+    if (isConfigured) {
+      await saveItem('sales', newSale);
+    }
     
     // Deduct from stock
     setProducts(prevProducts => prevProducts.map(p => {
       if (p.id === newSale.productId) {
-        return { ...p, quantity: p.quantity - newSale.quantity };
+        const updatedProduct = { ...p, quantity: p.quantity - newSale.quantity };
+        if (isConfigured) {
+          saveItem('products', updatedProduct);
+        }
+        return updatedProduct;
       }
       return p;
     }));
@@ -398,24 +548,38 @@ export default function Index() {
       paymentMethod: newSale.paymentMethod || 'Pix'
     };
     setTransactions(prev => [newTransaction, ...prev]);
+    if (isConfigured) {
+      await saveItem('transactions', newTransaction);
+    }
   };
 
-  const handleDeleteSale = (id: string) => {
+  const handleDeleteSale = async (id: string) => {
     const sale = sales.find(s => s.id === id);
     if (sale) {
       // Return to stock
       setProducts(prevProducts => prevProducts.map(p => {
         if (p.id === sale.productId) {
-          return { ...p, quantity: p.quantity + sale.quantity };
+          const updatedProduct = { ...p, quantity: p.quantity + sale.quantity };
+          if (isConfigured) {
+            saveItem('products', updatedProduct);
+          }
+          return updatedProduct;
         }
         return p;
       }));
     }
     setSales(sales.filter(s => s.id !== id));
+    if (isConfigured) {
+      await deleteItem('sales', id);
+    }
   };
 
-  const handleSaveSettings = (newSettings: any) => {
-    setSettings(newSettings);
+  const handleSaveSettings = async (newSettings: any) => {
+    const settingsWithId = { ...newSettings, id: 'default' };
+    setSettings(settingsWithId);
+    if (isConfigured) {
+      await saveItem('settings', settingsWithId);
+    }
   };
 
   // If user is not logged in, show the Auth Screen
@@ -463,6 +627,18 @@ export default function Index() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            {/* Connection Status Badge */}
+            {isConfigured ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-950 border border-emerald-800 px-3 py-1 text-xs font-semibold text-emerald-400 shadow-sm">
+                <Cloud size={14} className="animate-pulse" />
+                Nuvem Conectada (Supabase)
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-800 border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-400 shadow-sm">
+                <CloudOff size={14} />
+                Modo Local (Offline)
+              </span>
+            )}
             <span className="text-xs text-slate-500 hidden sm:inline">Última sincronização: Agora mesmo</span>
           </div>
         </header>
