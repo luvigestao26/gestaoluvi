@@ -12,15 +12,18 @@ import {
   ShoppingCart,
   BarChart3,
   Users,
-  Shield
+  Shield,
+  LogOut
 } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
+  userEmail?: string;
+  onLogout?: () => void;
 }
 
-export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
+export default function Sidebar({ activeTab, onTabChange, userEmail, onLogout }: SidebarProps) {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'campos', label: 'Campos', icon: Shield },
@@ -69,17 +72,27 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="p-4 border-t border-slate-800">
+      {/* Footer / User Profile & Logout */}
+      <div className="p-4 border-t border-slate-800 space-y-2">
         <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-800/40">
-          <div className="w-9 h-9 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-sm">
-            AD
+          <div className="w-9 h-9 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-sm shrink-0">
+            {userEmail ? userEmail.substring(0, 2).toUpperCase() : 'AD'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-white truncate">Administrador</p>
-            <p className="text-[10px] text-slate-500 truncate">admin@gestaoarenas.com</p>
+            <p className="text-xs font-bold text-white truncate">Usuário Ativo</p>
+            <p className="text-[10px] text-slate-500 truncate">{userEmail || 'admin@gestaoarenas.com'}</p>
           </div>
         </div>
+
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-rose-400 hover:text-rose-300 hover:bg-rose-950/20 border border-rose-900/30 transition-all"
+          >
+            <LogOut size={14} />
+            Sair da Conta
+          </button>
+        )}
       </div>
     </aside>
   );
