@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { showSuccess, showError } from "@/utils/toast";
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 interface AuthScreenProps {
   onLoginSuccess: (user: { name: string; email: string }) => void;
@@ -21,13 +22,13 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // Get registered users from localStorage
+  // Get registered users from localStorage (fallback for offline mode)
   const getRegisteredUsers = (): any[] => {
     const users = localStorage.getItem('ga_registered_users');
     return users ? JSON.parse(users) : [];
   };
 
-  const handleSignIn = (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       showError("Por favor, preencha todos os campos.");
@@ -36,24 +37,49 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      const users = getRegisteredUsers();
-      const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
 
-      // Default admin user for testing
-      if ((email.toLowerCase() === 'admin@gestaoarenas.com' && password === 'admin123') || user) {
-        const loggedUser = user || { name: 'Administrador', email: 'admin@gestaoarenas.com' };
-        localStorage.setItem('ga_current_user', JSON.stringify(loggedUser));
-        onLoginSuccess(loggedUser);
-        showSuccess(`Bem-vindo de volta, ${loggedUser.name}!`);
-      } else {
-        showError("E-mail ou senha incorretos.");
+        if (error) throw error;
+
+        if (data.user) {
+          const loggedUser = {
+            name: data.user.user_metadata.name || data.user.email?.split('@')[0] || 'Usuário',
+            email: data.user.email || '',
+          };
+          localStorage.setItem('ga_current_user', JSON.stringify(loggedUser));
+          onLoginSuccess(loggedUser);
+          showSuccess(`Bem-vindo de volta, ${loggedUser.name}!`);
+        }
+      } catch (err: any) {
+        showError(err.message || "Erro ao fazer login. Verifique suas credenciais.");
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
-    }, 1000);
+    } else {
+      // Fallback simulado para modo offline
+      setTimeout(() => {
+        const users = getRegisteredUsers();
+        const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+
+        if ((email.toLowerCase() === 'admin@gestaoarenas.com' && password === 'admin123') || user) {
+          const loggedUser = user || { name: 'Administrador', email: 'admin@gestaoarenas.com' };
+          localStorage.setItem('ga_current_user', JSON.stringify(loggedUser));
+          onLoginSuccess(loggedUser);
+          showSuccess(`Bem-vindo de volta, ${loggedUser.name}!`);
+        } else {
+          showError("E-mail ou senha incorretos.");
+        }
+        setIsLoading(false);
+      }, 1000);
+    }
   };
 
-  const handleSignUp = (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email || !password || !confirmPassword) {
       showError("Por favor, preencha todos os campos.");
@@ -72,28 +98,59 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      const users = getRegisteredUsers();
-      const userExists = users.some(u => u.email.toLowerCase() === email.toLowerCase());
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              name: name,
+            },
+          },
+        });
 
-      if (userExists || email.toLowerCase() === 'admin@gestaoarenas.com') {
-        showError("Este e-mail já está cadastrado.");
+        if (error) throw error;
+
+        if (data.user) {
+          const newUser = {
+            name: name,
+            email: data.user.email || '',
+          };
+          localStorage.setItem('ga_current_user', JSON.stringify(newUser));
+          onLoginSuccess(newUser);
+          showSuccess("Conta criada com sucesso! Bem-vindo ao Gestão Arenas.");
+        }
+      } catch (err: any) {
+        showError(err.message || "Erro ao criar conta.");
+      } finally {
         setIsLoading(false);
-        return;
       }
+    } else {
+      // Fallback simulado para modo offline
+      setTimeout(() => {
+        const users = getRegisteredUsers();
+        const userExists = users.some(u => u.email.toLowerCase() === email.toLowerCase());
 
-      const newUser = { name, email, password };
-      users.push(newUser);
-      localStorage.setItem('ga_registered_users', JSON.stringify(users));
-      localStorage.setItem('ga_current_user', JSON.stringify(newUser));
-      
-      onLoginSuccess(newUser);
-      showSuccess("Conta criada com sucesso! Bem-vindo ao Gestão Arenas.");
-      setIsLoading(false);
-    }, 1200);
+        if (userExists || email.toLowerCase() === 'admin@gestaoarenas.com') {
+          showError("Este e-mail já está cadastrado.");
+          setIsLoading(false);
+          return;
+        }
+
+        const newUser = { name, email, password };
+        users.push(newUser);
+        localStorage.setItem('ga_registered_users', JSON.stringify(users));
+        localStorage.setItem('ga_current_user', JSON.stringify(newUser));
+        
+        onLoginSuccess(newUser);
+        showSuccess("Conta criada com sucesso! Bem-vindo ao Gestão Arenas.");
+        setIsLoading(false);
+      }, 1200);
+    }
   };
 
-  const handleForgotPassword = (e: React.FormEvent) => {
+  const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
       showError("Por favor, insira seu e-mail.");
@@ -102,27 +159,59 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      showSuccess(`E-mail de recuperação enviado com sucesso para ${email}!`);
-      setMode('signin');
-      setIsLoading(false);
-    }, 1500);
+    if (isSupabaseConfigured()) {
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin,
+        });
+        if (error) throw error;
+        showSuccess(`E-mail de recuperação enviado com sucesso para ${email}!`);
+        setMode('signin');
+      } catch (err: any) {
+        showError(err.message || "Erro ao enviar e-mail de recuperação.");
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      setTimeout(() => {
+        showSuccess(`E-mail de recuperação enviado com sucesso para ${email}!`);
+        setMode('signin');
+        setIsLoading(false);
+      }, 1500);
+    }
   };
 
-  const handleGoogleLogin = () => {
+  const handleGoogleLogin = async () => {
     setIsLoading(true);
-    showSuccess("Conectando com o Google...");
 
-    setTimeout(() => {
-      const googleUser = {
-        name: 'Usuário Google',
-        email: 'usuario.google@gmail.com'
-      };
-      localStorage.setItem('ga_current_user', JSON.stringify(googleUser));
-      onLoginSuccess(googleUser);
-      showSuccess("Login realizado com sucesso via Google!");
-      setIsLoading(false);
-    }, 1500);
+    if (isSupabaseConfigured()) {
+      try {
+        showSuccess("Redirecionando para o Google...");
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin,
+          },
+        });
+        if (error) throw error;
+      } catch (err: any) {
+        showError(err.message || "Erro ao conectar com o Google.");
+        setIsLoading(false);
+      }
+    } else {
+      // Fallback simulado para modo offline
+      showSuccess("Conectando com o Google...");
+      setTimeout(() => {
+        const googleUser = {
+          name: 'Usuário Google',
+          email: 'usuario.google@gmail.com'
+        };
+        localStorage.setItem('ga_current_user', JSON.stringify(googleUser));
+        onLoginSuccess(googleUser);
+        showSuccess("Login realizado com sucesso via Google!");
+        setIsLoading(false);
+      }, 1500);
+    }
   };
 
   return (

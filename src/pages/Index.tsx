@@ -19,6 +19,7 @@ import { MadeWithDyad } from "@/components/made-with-dyad";
 import { Menu, Cloud, CloudOff } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { useSupabaseSync } from '@/hooks/useSupabaseSync';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 // Mock initial data
 const INITIAL_FIELDS = [
@@ -148,6 +149,40 @@ export default function Index() {
 
   const [whatsappMessage, setWhatsappMessage] = useState<string | null>(null);
 
+  // Listen to Supabase Auth State Changes
+  useEffect(() => {
+    if (isSupabaseConfigured()) {
+      // Check current session on mount
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          const loggedUser = {
+            name: session.user.user_metadata.name || session.user.email?.split('@')[0] || 'Usuário',
+            email: session.user.email || '',
+          };
+          localStorage.setItem('ga_current_user', JSON.stringify(loggedUser));
+          setCurrentUser(loggedUser);
+        }
+      });
+
+      // Listen to auth changes (login, logout, token refresh)
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.user) {
+          const loggedUser = {
+            name: session.user.user_metadata.name || session.user.email?.split('@')[0] || 'Usuário',
+            email: session.user.email || '',
+          };
+          localStorage.setItem('ga_current_user', JSON.stringify(loggedUser));
+          setCurrentUser(loggedUser);
+        } else {
+          localStorage.removeItem('ga_current_user');
+          setCurrentUser(null);
+        }
+      });
+
+      return () => subscription.unsubscribe();
+    }
+  }, []);
+
   // Load data from Supabase if configured
   useEffect(() => {
     if (isConfigured) {
@@ -239,7 +274,10 @@ export default function Index() {
   }, [sales]);
 
   // Logout Handler
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (isSupabaseConfigured()) {
+      await supabase.auth.signOut();
+    }
     localStorage.removeItem('ga_current_user');
     setCurrentUser(null);
     showSuccess("Você saiu da sua conta.");
