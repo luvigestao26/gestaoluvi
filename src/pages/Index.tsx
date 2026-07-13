@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from '@/components/Sidebar';
 import DashboardOverview from '@/components/DashboardOverview';
 import BookingCalendar from '@/components/BookingCalendar';
@@ -91,6 +91,23 @@ export default function Index() {
     return saved ? JSON.parse(saved) : null;
   });
 
+  // Helper to get initial user key safely
+  const getInitialUserKey = () => {
+    const saved = localStorage.getItem('ga_current_user');
+    if (saved) {
+      try {
+        const user = JSON.parse(saved);
+        return user.id || user.email;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  };
+
+  // Ref to track which user's data is currently loaded in the state
+  const loadedUserRef = useRef<string | null>(getInitialUserKey());
+
   // Helper to get user-scoped localStorage key
   const getScopedKey = (key: string) => {
     if (!currentUser) return `ga_guest_${key}`;
@@ -125,39 +142,84 @@ export default function Index() {
 
   // Listen to Supabase Auth State Changes
   useEffect(() => {
-    if (isSupabaseConfigured()) {
-      // Check current session on mount
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) {
-          const loggedUser = {
-            id: session.user.id,
-            name: session.user.user_metadata.name || session.user.email?.split('@')[0] || 'Usuário',
-            email: session.user.email || '',
-          };
-          localStorage.setItem('ga_current_user', JSON.stringify(loggedUser));
-          setCurrentUser(loggedUser);
-        }
-      });
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        // Check current session on mount
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user) {
+            const loggedUser = {
+              id: session.user.id,
+              name: session.user.user_metadata.name || session.user.email?.split('@')[0] || 'Usuário',
+              email: session.user.email || '',
+            };
+            localStorage.setItem('ga_current_user', JSON.stringify(loggedUser));
+            setCurrentUser(loggedUser);
+          }
+        }).catch(err => console.error("Erro ao obter sessão do Supabase:", err));
 
-      // Listen to auth changes (login, logout, token refresh)
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        if (session?.user) {
-          const loggedUser = {
-            id: session.user.id,
-            name: session.user.user_metadata.name || session.user.email?.split('@')[0] || 'Usuário',
-            email: session.user.email || '',
-          };
-          localStorage.setItem('ga_current_user', JSON.stringify(loggedUser));
-          setCurrentUser(loggedUser);
-        } else {
-          localStorage.removeItem('ga_current_user');
-          setCurrentUser(null);
-        }
-      });
+        // Listen to auth changes (login, logout, token refresh)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (session?.user) {
+            const loggedUser = {
+              id: session.user.id,
+              name: session.user.user_metadata.name || session.user.email?.split('@')[0] || 'Usuário',
+              email: session.user.email || '',
+            };
+            localStorage.setItem('ga_current_user', JSON.stringify(loggedUser));
+            setCurrentUser(loggedUser);
+          } else {
+            localStorage.removeItem('ga_current_user');
+            setCurrentUser(null);
+          }
+        });
 
-      return () => subscription.unsubscribe();
+        return () => subscription.unsubscribe();
+      } catch (err) {
+        console.error("Erro ao configurar ouvintes do Supabase:", err);
+      }
     }
   }, []);
+
+  // Load user-scoped data when currentUser changes
+  useEffect(() => {
+    const userKey = currentUser ? (currentUser.id || currentUser.email) : null;
+    
+    if (userKey) {
+      const loadScoped = (key: string, defaultData: any) => {
+        const saved = localStorage.getItem(`ga_${userKey}_${key}`);
+        return saved ? JSON.parse(saved) : defaultData;
+      };
+
+      setFields(loadScoped('fields', INITIAL_FIELDS));
+      setCustomers(loadScoped('customers', INITIAL_CUSTOMERS));
+      setBookings(loadScoped('bookings', INITIAL_BOOKINGS));
+      setTransactions(loadScoped('transactions', INITIAL_TRANSACTIONS));
+      setSettings(loadScoped('settings', INITIAL_SETTINGS));
+      setBlockedSlots(loadScoped('blockedSlots', []));
+      setMensalistas(loadScoped('mensalistas', INITIAL_MENSALISTAS));
+      setEventos(loadScoped('eventos', INITIAL_EVENTOS));
+      setAccountsPayable(loadScoped('accountsPayable', INITIAL_ACCOUNTS_PAYABLE));
+      setProducts(loadScoped('products', INITIAL_PRODUCTS));
+      setSales(loadScoped('sales', INITIAL_SALES));
+      
+      loadedUserRef.current = userKey;
+    } else {
+      // Reset to default/guest data
+      setFields(INITIAL_FIELDS);
+      setCustomers(INITIAL_CUSTOMERS);
+      setBookings(INITIAL_BOOKINGS);
+      setTransactions(INITIAL_TRANSACTIONS);
+      setSettings(INITIAL_SETTINGS);
+      setBlockedSlots([]);
+      setMensalistas(INITIAL_MENSALISTAS);
+      setEventos(INITIAL_EVENTOS);
+      setAccountsPayable(INITIAL_ACCOUNTS_PAYABLE);
+      setProducts(INITIAL_PRODUCTS);
+      setSales(INITIAL_SALES);
+      
+      loadedUserRef.current = null;
+    }
+  }, [currentUser]);
 
   // Load data from Supabase if configured and user is logged in
   useEffect(() => {
@@ -204,54 +266,87 @@ export default function Index() {
     }
   }, [isConfigured, currentUser]);
 
-  // Sync states to user-scoped localStorage
+  // Sync states to user-scoped localStorage (only if loadedUserRef matches current user)
   useEffect(() => {
-    if (currentUser) localStorage.setItem(getScopedKey('fields'), JSON.stringify(fields));
+    const userKey = currentUser ? (currentUser.id || currentUser.email) : null;
+    if (userKey && loadedUserRef.current === userKey) {
+      localStorage.setItem(`ga_${userKey}_fields`, JSON.stringify(fields));
+    }
   }, [fields, currentUser]);
 
   useEffect(() => {
-    if (currentUser) localStorage.setItem(getScopedKey('customers'), JSON.stringify(customers));
+    const userKey = currentUser ? (currentUser.id || currentUser.email) : null;
+    if (userKey && loadedUserRef.current === userKey) {
+      localStorage.setItem(`ga_${userKey}_customers`, JSON.stringify(customers));
+    }
   }, [customers, currentUser]);
 
   useEffect(() => {
-    if (currentUser) localStorage.setItem(getScopedKey('bookings'), JSON.stringify(bookings));
+    const userKey = currentUser ? (currentUser.id || currentUser.email) : null;
+    if (userKey && loadedUserRef.current === userKey) {
+      localStorage.setItem(`ga_${userKey}_bookings`, JSON.stringify(bookings));
+    }
   }, [bookings, currentUser]);
 
   useEffect(() => {
-    if (currentUser) localStorage.setItem(getScopedKey('transactions'), JSON.stringify(transactions));
+    const userKey = currentUser ? (currentUser.id || currentUser.email) : null;
+    if (userKey && loadedUserRef.current === userKey) {
+      localStorage.setItem(`ga_${userKey}_transactions`, JSON.stringify(transactions));
+    }
   }, [transactions, currentUser]);
 
   useEffect(() => {
-    if (currentUser) localStorage.setItem(getScopedKey('settings'), JSON.stringify(settings));
+    const userKey = currentUser ? (currentUser.id || currentUser.email) : null;
+    if (userKey && loadedUserRef.current === userKey) {
+      localStorage.setItem(`ga_${userKey}_settings`, JSON.stringify(settings));
+    }
   }, [settings, currentUser]);
 
   useEffect(() => {
-    if (currentUser) localStorage.setItem(getScopedKey('blockedSlots'), JSON.stringify(blockedSlots));
+    const userKey = currentUser ? (currentUser.id || currentUser.email) : null;
+    if (userKey && loadedUserRef.current === userKey) {
+      localStorage.setItem(`ga_${userKey}_blockedSlots`, JSON.stringify(blockedSlots));
+    }
   }, [blockedSlots, currentUser]);
 
   useEffect(() => {
-    if (currentUser) localStorage.setItem(getScopedKey('mensalistas'), JSON.stringify(mensalistas));
+    const userKey = currentUser ? (currentUser.id || currentUser.email) : null;
+    if (userKey && loadedUserRef.current === userKey) {
+      localStorage.setItem(`ga_${userKey}_mensalistas`, JSON.stringify(mensalistas));
+    }
   }, [mensalistas, currentUser]);
 
   useEffect(() => {
-    if (currentUser) localStorage.setItem(getScopedKey('eventos'), JSON.stringify(eventos));
+    const userKey = currentUser ? (currentUser.id || currentUser.email) : null;
+    if (userKey && loadedUserRef.current === userKey) {
+      localStorage.setItem(`ga_${userKey}_eventos`, JSON.stringify(eventos));
+    }
   }, [eventos, currentUser]);
 
   useEffect(() => {
-    if (currentUser) localStorage.setItem(getScopedKey('accountsPayable'), JSON.stringify(accountsPayable));
+    const userKey = currentUser ? (currentUser.id || currentUser.email) : null;
+    if (userKey && loadedUserRef.current === userKey) {
+      localStorage.setItem(`ga_${userKey}_accountsPayable`, JSON.stringify(accountsPayable));
+    }
   }, [accountsPayable, currentUser]);
 
   useEffect(() => {
-    if (currentUser) localStorage.setItem(getScopedKey('products'), JSON.stringify(products));
+    const userKey = currentUser ? (currentUser.id || currentUser.email) : null;
+    if (userKey && loadedUserRef.current === userKey) {
+      localStorage.setItem(`ga_${userKey}_products`, JSON.stringify(products));
+    }
   }, [products, currentUser]);
 
   useEffect(() => {
-    if (currentUser) localStorage.setItem(getScopedKey('sales'), JSON.stringify(sales));
+    const userKey = currentUser ? (currentUser.id || currentUser.email) : null;
+    if (userKey && loadedUserRef.current === userKey) {
+      localStorage.setItem(`ga_${userKey}_sales`, JSON.stringify(sales));
+    }
   }, [sales, currentUser]);
 
   // Logout Handler
   const handleLogout = async () => {
-    if (isSupabaseConfigured()) {
+    if (isSupabaseConfigured() && supabase) {
       await supabase.auth.signOut();
     }
     localStorage.removeItem('ga_current_user');

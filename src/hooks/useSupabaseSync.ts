@@ -6,7 +6,7 @@ export function useSupabaseSync() {
   const [configured, setConfigured] = useState(false);
 
   useEffect(() => {
-    setConfigured(isSupabaseConfigured());
+    setConfigured(isSupabaseConfigured() && !!supabase);
   }, []);
 
   // Helper para converter snake_case do banco para camelCase do frontend
@@ -33,7 +33,7 @@ export function useSupabaseSync() {
 
   // Carregar dados de uma tabela filtrando pelo usuário logado
   const loadTable = async (tableName: string) => {
-    if (!isSupabaseConfigured()) return null;
+    if (!isSupabaseConfigured() || !supabase) return null;
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
@@ -53,7 +53,7 @@ export function useSupabaseSync() {
 
   // Salvar/Inserir item vinculando ao usuário logado
   const saveItem = async (tableName: string, item: any) => {
-    if (!isSupabaseConfigured()) return false;
+    if (!isSupabaseConfigured() || !supabase) return false;
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
@@ -73,7 +73,7 @@ export function useSupabaseSync() {
 
   // Deletar item garantindo que pertence ao usuário logado
   const deleteItem = async (tableName: string, id: string) => {
-    if (!isSupabaseConfigured()) return false;
+    if (!isSupabaseConfigured() || !supabase) return false;
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
@@ -95,7 +95,7 @@ export function useSupabaseSync() {
 
   // Carregar configurações específicas do usuário logado
   const loadSettings = async () => {
-    if (!isSupabaseConfigured()) return null;
+    if (!isSupabaseConfigured() || !supabase) return null;
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
