@@ -40,56 +40,6 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
           password,
         });
         if (error) throw error;
-        showSuccess("Conta criada com sucesso! Verifique seu e-mail ou faça login.");
-        setIsSignUp(false);
-      } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (<dyad-write path="src/components/Auth.tsx" description="Criando a tela de Login e Cadastro integrada ao Supabase">
-"use client";
-
-import React, { useState } from 'react';
-import { getSupabaseClient, isSupabaseConfigured, saveCustomCredentials } from '@/lib/supabase';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Shield, Lock, Mail, UserPlus, LogIn, Database, AlertCircle } from 'lucide-react';
-import { showSuccess, showError } from "@/utils/toast";
-
-interface AuthProps {
-  onAuthSuccess: (user: any) => void;
-}
-
-export default function Auth({ onAuthSuccess }: AuthProps) {
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  // Supabase manual config states
-  const [showConfig, setShowConfig] = useState(!isSupabaseConfigured());
-  const [customUrl, setCustomUrl] = useState(localStorage.getItem('custom_supabase_url') || '');
-  const [customKey, setCustomKey] = useState(localStorage.getItem('custom_supabase_anon_key') || '');
-
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const supabase = getSupabaseClient();
-    if (!supabase) {
-      showError("Supabase não está configurado. Configure as credenciais abaixo.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      if (isSignUp) {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-        if (error) throw error;
         showSuccess("Conta criada com sucesso! Você já pode fazer login.");
         setIsSignUp(false);
       } else {
