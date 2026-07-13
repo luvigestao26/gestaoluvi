@@ -9,7 +9,7 @@ import { showSuccess, showError } from "@/utils/toast";
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 interface AuthScreenProps {
-  onLoginSuccess: (user: { name: string; email: string }) => void;
+  onLoginSuccess: (user: { id: string; name: string; email: string }) => void;
 }
 
 export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
@@ -48,6 +48,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
 
         if (data.user) {
           const loggedUser = {
+            id: data.user.id,
             name: data.user.user_metadata.name || data.user.email?.split('@')[0] || 'Usuário',
             email: data.user.email || '',
           };
@@ -67,7 +68,15 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
         const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
 
         if ((email.toLowerCase() === 'admin@gestaoarenas.com' && password === 'admin123') || user) {
-          const loggedUser = user || { name: 'Administrador', email: 'admin@gestaoarenas.com' };
+          const loggedUser = user ? {
+            id: user.id || 'offline-user-' + user.email,
+            name: user.name,
+            email: user.email
+          } : {
+            id: 'offline-admin',
+            name: 'Administrador',
+            email: 'admin@gestaoarenas.com'
+          };
           localStorage.setItem('ga_current_user', JSON.stringify(loggedUser));
           onLoginSuccess(loggedUser);
           showSuccess(`Bem-vindo de volta, ${loggedUser.name}!`);
@@ -114,6 +123,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
 
         if (data.user) {
           const newUser = {
+            id: data.user.id,
             name: name,
             email: data.user.email || '',
           };
@@ -138,12 +148,15 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
           return;
         }
 
-        const newUser = { name, email, password };
+        const userId = 'offline-' + Date.now();
+        const newUser = { id: userId, name, email, password };
         users.push(newUser);
         localStorage.setItem('ga_registered_users', JSON.stringify(users));
-        localStorage.setItem('ga_current_user', JSON.stringify(newUser));
         
-        onLoginSuccess(newUser);
+        const sessionUser = { id: userId, name, email };
+        localStorage.setItem('ga_current_user', JSON.stringify(sessionUser));
+        
+        onLoginSuccess(sessionUser);
         showSuccess("Conta criada com sucesso! Bem-vindo ao Gestão Arenas.");
         setIsLoading(false);
       }, 1200);
@@ -203,6 +216,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
       showSuccess("Conectando com o Google...");
       setTimeout(() => {
         const googleUser = {
+          id: 'offline-google',
           name: 'Usuário Google',
           email: 'usuario.google@gmail.com'
         };

@@ -86,66 +86,40 @@ export default function Index() {
   const { isConfigured, loadTable, saveItem, deleteItem, loadSettings } = useSupabaseSync();
 
   // Auth State
-  const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(() => {
+  const [currentUser, setCurrentUser] = useState<{ id: string; name: string; email: string } | null>(() => {
     const saved = localStorage.getItem('ga_current_user');
     return saved ? JSON.parse(saved) : null;
   });
 
-  // State initialization with localStorage persistence
-  const [fields, setFields] = useState(() => {
-    const saved = localStorage.getItem('ga_fields');
-    return saved ? JSON.parse(saved) : INITIAL_FIELDS;
-  });
+  // Helper to get user-scoped localStorage key
+  const getScopedKey = (key: string) => {
+    if (!currentUser) return `ga_guest_${key}`;
+    const userKey = currentUser.id || currentUser.email;
+    return `ga_${userKey}_${key}`;
+  };
 
-  const [customers, setCustomers] = useState(() => {
-    const saved = localStorage.getItem('ga_customers');
-    return saved ? JSON.parse(saved) : INITIAL_CUSTOMERS;
-  });
+  // Helper to load scoped data synchronously on mount
+  const getScopedData = (key: string, defaultData: any) => {
+    const savedUser = localStorage.getItem('ga_current_user');
+    if (!savedUser) return defaultData;
+    const user = JSON.parse(savedUser);
+    const userKey = user.id || user.email;
+    const saved = localStorage.getItem(`ga_${userKey}_${key}`);
+    return saved ? JSON.parse(saved) : defaultData;
+  };
 
-  const [bookings, setBookings] = useState(() => {
-    const saved = localStorage.getItem('ga_bookings');
-    return saved ? JSON.parse(saved) : INITIAL_BOOKINGS;
-  });
-
-  const [transactions, setTransactions] = useState(() => {
-    const saved = localStorage.getItem('ga_transactions');
-    return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
-  });
-
-  const [settings, setSettings] = useState(() => {
-    const saved = localStorage.getItem('ga_settings');
-    return saved ? JSON.parse(saved) : INITIAL_SETTINGS;
-  });
-
-  const [blockedSlots, setBlockedSlots] = useState(() => {
-    const saved = localStorage.getItem('ga_blockedSlots');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [mensalistas, setMensalistas] = useState(() => {
-    const saved = localStorage.getItem('ga_mensalistas');
-    return saved ? JSON.parse(saved) : INITIAL_MENSALISTAS;
-  });
-
-  const [eventos, setEventos] = useState(() => {
-    const saved = localStorage.getItem('ga_eventos');
-    return saved ? JSON.parse(saved) : INITIAL_EVENTOS;
-  });
-
-  const [accountsPayable, setAccountsPayable] = useState(() => {
-    const saved = localStorage.getItem('ga_accountsPayable');
-    return saved ? JSON.parse(saved) : INITIAL_ACCOUNTS_PAYABLE;
-  });
-
-  const [products, setProducts] = useState(() => {
-    const saved = localStorage.getItem('ga_products');
-    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
-  });
-
-  const [sales, setSales] = useState(() => {
-    const saved = localStorage.getItem('ga_sales');
-    return saved ? JSON.parse(saved) : INITIAL_SALES;
-  });
+  // State initialization with user-scoped localStorage persistence
+  const [fields, setFields] = useState(() => getScopedData('fields', INITIAL_FIELDS));
+  const [customers, setCustomers] = useState(() => getScopedData('customers', INITIAL_CUSTOMERS));
+  const [bookings, setBookings] = useState(() => getScopedData('bookings', INITIAL_BOOKINGS));
+  const [transactions, setTransactions] = useState(() => getScopedData('transactions', INITIAL_TRANSACTIONS));
+  const [settings, setSettings] = useState(() => getScopedData('settings', INITIAL_SETTINGS));
+  const [blockedSlots, setBlockedSlots] = useState(() => getScopedData('blockedSlots', []));
+  const [mensalistas, setMensalistas] = useState(() => getScopedData('mensalistas', INITIAL_MENSALISTAS));
+  const [eventos, setEventos] = useState(() => getScopedData('eventos', INITIAL_EVENTOS));
+  const [accountsPayable, setAccountsPayable] = useState(() => getScopedData('accountsPayable', INITIAL_ACCOUNTS_PAYABLE));
+  const [products, setProducts] = useState(() => getScopedData('products', INITIAL_PRODUCTS));
+  const [sales, setSales] = useState(() => getScopedData('sales', INITIAL_SALES));
 
   const [whatsappMessage, setWhatsappMessage] = useState<string | null>(null);
 
@@ -156,6 +130,7 @@ export default function Index() {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
           const loggedUser = {
+            id: session.user.id,
             name: session.user.user_metadata.name || session.user.email?.split('@')[0] || 'Usuário',
             email: session.user.email || '',
           };
@@ -168,6 +143,7 @@ export default function Index() {
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
         if (session?.user) {
           const loggedUser = {
+            id: session.user.id,
             name: session.user.user_metadata.name || session.user.email?.split('@')[0] || 'Usuário',
             email: session.user.email || '',
           };
@@ -183,9 +159,9 @@ export default function Index() {
     }
   }, []);
 
-  // Load data from Supabase if configured
+  // Load data from Supabase if configured and user is logged in
   useEffect(() => {
-    if (isConfigured) {
+    if (isConfigured && currentUser) {
       const fetchDbData = async () => {
         try {
           const dbFields = await loadTable('fields');
@@ -226,52 +202,52 @@ export default function Index() {
       };
       fetchDbData();
     }
-  }, [isConfigured]);
+  }, [isConfigured, currentUser]);
 
-  // Sync states to localStorage (as fallback)
+  // Sync states to user-scoped localStorage
   useEffect(() => {
-    localStorage.setItem('ga_fields', JSON.stringify(fields));
-  }, [fields]);
-
-  useEffect(() => {
-    localStorage.setItem('ga_customers', JSON.stringify(customers));
-  }, [customers]);
+    if (currentUser) localStorage.setItem(getScopedKey('fields'), JSON.stringify(fields));
+  }, [fields, currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('ga_bookings', JSON.stringify(bookings));
-  }, [bookings]);
+    if (currentUser) localStorage.setItem(getScopedKey('customers'), JSON.stringify(customers));
+  }, [customers, currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('ga_transactions', JSON.stringify(transactions));
-  }, [transactions]);
+    if (currentUser) localStorage.setItem(getScopedKey('bookings'), JSON.stringify(bookings));
+  }, [bookings, currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('ga_settings', JSON.stringify(settings));
-  }, [settings]);
+    if (currentUser) localStorage.setItem(getScopedKey('transactions'), JSON.stringify(transactions));
+  }, [transactions, currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('ga_blockedSlots', JSON.stringify(blockedSlots));
-  }, [blockedSlots]);
+    if (currentUser) localStorage.setItem(getScopedKey('settings'), JSON.stringify(settings));
+  }, [settings, currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('ga_mensalistas', JSON.stringify(mensalistas));
-  }, [mensalistas]);
+    if (currentUser) localStorage.setItem(getScopedKey('blockedSlots'), JSON.stringify(blockedSlots));
+  }, [blockedSlots, currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('ga_eventos', JSON.stringify(eventos));
-  }, [eventos]);
+    if (currentUser) localStorage.setItem(getScopedKey('mensalistas'), JSON.stringify(mensalistas));
+  }, [mensalistas, currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('ga_accountsPayable', JSON.stringify(accountsPayable));
-  }, [accountsPayable]);
+    if (currentUser) localStorage.setItem(getScopedKey('eventos'), JSON.stringify(eventos));
+  }, [eventos, currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('ga_products', JSON.stringify(products));
-  }, [products]);
+    if (currentUser) localStorage.setItem(getScopedKey('accountsPayable'), JSON.stringify(accountsPayable));
+  }, [accountsPayable, currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('ga_sales', JSON.stringify(sales));
-  }, [sales]);
+    if (currentUser) localStorage.setItem(getScopedKey('products'), JSON.stringify(products));
+  }, [products, currentUser]);
+
+  useEffect(() => {
+    if (currentUser) localStorage.setItem(getScopedKey('sales'), JSON.stringify(sales));
+  }, [sales, currentUser]);
 
   // Logout Handler
   const handleLogout = async () => {
@@ -283,7 +259,7 @@ export default function Index() {
     showSuccess("Você saiu da sua conta.");
   };
 
-  // Reset All Data Handler
+  // Reset All Data Handler (Scoped to current user)
   const handleResetAllData = async () => {
     if (isConfigured) {
       // Delete from Supabase
@@ -305,7 +281,19 @@ export default function Index() {
     setFields(INITIAL_FIELDS);
     setProducts(INITIAL_PRODUCTS);
     setCustomers(INITIAL_CUSTOMERS);
-    localStorage.clear();
+    
+    // Clear only current user's keys
+    if (currentUser) {
+      const userKey = currentUser.id || currentUser.email;
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(`ga_${userKey}_`)) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+    }
   };
 
   // Campos Handlers
@@ -613,7 +601,7 @@ export default function Index() {
   };
 
   const handleSaveSettings = async (newSettings: any) => {
-    const settingsWithId = { ...newSettings, id: 'default' };
+    const settingsWithId = { ...newSettings, id: currentUser?.id || 'default' };
     setSettings(settingsWithId);
     if (isConfigured) {
       await saveItem('settings', settingsWithId);

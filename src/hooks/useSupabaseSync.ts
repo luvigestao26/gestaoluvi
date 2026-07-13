@@ -31,11 +31,18 @@ export function useSupabaseSync() {
     return mapped;
   };
 
-  // Carregar dados de uma tabela
+  // Carregar dados de uma tabela filtrando pelo usuário logado
   const loadTable = async (tableName: string) => {
     if (!isSupabaseConfigured()) return null;
     try {
-      const { data, error } = await supabase.from(tableName).select('*');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from(tableName)
+        .select('*')
+        .eq('user_id', user.id);
+
       if (error) throw error;
       return data ? data.map(mapFromDb) : [];
     } catch (err: any) {
@@ -44,11 +51,16 @@ export function useSupabaseSync() {
     }
   };
 
-  // Salvar/Inserir item
+  // Salvar/Inserir item vinculando ao usuário logado
   const saveItem = async (tableName: string, item: any) => {
     if (!isSupabaseConfigured()) return false;
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+
       const dbItem = mapToDb(item);
+      dbItem.user_id = user.id; // Vincula o registro ao usuário logado
+
       const { error } = await supabase.from(tableName).upsert(dbItem);
       if (error) throw error;
       return true;
@@ -59,11 +71,19 @@ export function useSupabaseSync() {
     }
   };
 
-  // Deletar item
+  // Deletar item garantindo que pertence ao usuário logado
   const deleteItem = async (tableName: string, id: string) => {
     if (!isSupabaseConfigured()) return false;
     try {
-      const { error } = await supabase.from(tableName).delete().eq('id', id);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+
+      const { error } = await supabase
+        .from(tableName)
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
       if (error) throw error;
       return true;
     } catch (err: any) {
@@ -73,12 +93,20 @@ export function useSupabaseSync() {
     }
   };
 
-  // Carregar configurações específicas (registro único 'default')
+  // Carregar configurações específicas do usuário logado
   const loadSettings = async () => {
     if (!isSupabaseConfigured()) return null;
     try {
-      const { data, error } = await supabase.from('settings').select('*').eq('id', 'default').single();
-      if (error && error.code !== 'PGRST116') throw error; // PGRST116 é "no rows returned"
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data, error } = await supabase
+        .from('settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) throw error;
       return data ? mapFromDb(data) : null;
     } catch (err: any) {
       console.error('Erro ao carregar configurações:', err.message);
