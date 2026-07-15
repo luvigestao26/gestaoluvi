@@ -12,6 +12,7 @@ import VendasManagement from '@/components/VendasManagement';
 import DiaristasManagement from '@/components/DiaristasManagement';
 import RelatoriosManagement from '@/components/RelatoriosManagement';
 import CamposManagement from '@/components/CamposManagement';
+import SettingsManagement from '@/components/SettingsManagement';
 import WhatsAppSimulator from '@/components/WhatsAppSimulator';
 import Auth from '@/components/Auth';
 import { getSupabaseClient } from '@/lib/supabase';
@@ -579,6 +580,16 @@ export default function Index() {
     setTransactions(transactions.filter(t => t.id !== `sale-${id}`));
   };
 
+  // Settings Handlers
+  const handleSaveSettings = async (updatedSettings: any) => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase.from('settings').update(keysToSnake(updatedSettings)).eq('id', 'default');
+    }
+    setSettings(updatedSettings);
+    showSuccess("Configurações salvas com sucesso!");
+  };
+
   // If auth is not checked yet, show a loading spinner
   if (!authChecked) {
     return (
@@ -768,6 +779,13 @@ export default function Index() {
               transactions={transactions}
               sales={sales}
               accountsPayable={accountsPayable}
+            />
+          )}
+
+          {activeTab === 'settings' && (
+            <SettingsManagement 
+              arenaSettings={settings}
+              onSaveSettings={handleSaveSettings}
             />
           )}
         </div>

@@ -13,7 +13,8 @@ import {
   BarChart3,
   Users,
   Shield,
-  LogOut
+  LogOut,
+  Settings
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -35,6 +36,7 @@ export default function Sidebar({ activeTab, onTabChange, userEmail, onLogout }:
     { id: 'eventos', label: 'Eventos', icon: Award },
     { id: 'payable', label: 'Contas a Pagar', icon: CreditCard },
     { id: 'relatorios', label: 'Relatórios', icon: BarChart3 },
+    { id: 'settings', label: 'Configurações', icon: Settings },
   ];
 
   return (
