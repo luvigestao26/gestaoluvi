@@ -357,14 +357,14 @@ export default function Index() {
     setBlockedSlots(blockedSlots.filter(b => b.id !== id));
   };
 
-  // Mensalista Handlers
+  // Mensalista Handlers (Usa atualizações funcionais para suportar múltiplos cadastros simultâneos)
   const handleAddMensalista = async (newMensalista: any) => {
     const supabase = getSupabaseClient();
     const mensalistaWithUser = { ...newMensalista, id: `${user.id}_${newMensalista.id}` };
     if (supabase) {
       await supabase.from('mensalistas').insert(keysToSnake(mensalistaWithUser));
     }
-    setMensalistas([...mensalistas, mensalistaWithUser]);
+    setMensalistas(prev => [...prev, mensalistaWithUser]);
     
     const newTransaction = {
       id: `${user.id}_mensalista-${newMensalista.id}`,
@@ -378,7 +378,7 @@ export default function Index() {
     if (supabase) {
       await supabase.from('transactions').insert(keysToSnake(newTransaction));
     }
-    setTransactions([newTransaction, ...transactions]);
+    setTransactions(prev => [newTransaction, ...prev]);
   };
 
   const handleDeleteMensalista = async (id: string) => {

@@ -18,13 +18,13 @@ interface MensalistaManagementProps {
 }
 
 const DAYS_OF_WEEK = [
-  { value: 0, label: "Domingo" },
-  { value: 1, label: "Segunda-feira" },
-  { value: 2, label: "Terça-feira" },
-  { value: 3, label: "Quarta-feira" },
-  { value: 4, label: "Quinta-feira" },
-  { value: 5, label: "Sexta-feira" },
-  { value: 6, label: "Sábado" }
+  { value: 0, label: "Domingo", short: "Dom" },
+  { value: 1, label: "Segunda-feira", short: "Seg" },
+  { value: 2, label: "Terça-feira", short: "Ter" },
+  { value: 3, label: "Quarta-feira", short: "Qua" },
+  { value: 4, label: "Quinta-feira", short: "Qui" },
+  { value: 5, label: "Sexta-feira", short: "Sex" },
+  { value: 6, label: "Sábado", short: "Sáb" }
 ];
 
 export default function MensalistaManagement({ 
@@ -39,7 +39,7 @@ export default function MensalistaManagement({
   const [customerPhone, setCustomerPhone] = useState("");
   const [fieldId, setFieldId] = useState("");
   const [sport, setSport] = useState("Futebol");
-  const [dayOfWeek, setDayOfWeek] = useState("1");
+  const [selectedDays, setSelectedDays] = useState<number[]>([1]); // Array de dias selecionados (padrão: Segunda-feira)
   const [startTime, setStartTime] = useState("18:00");
   const [endTime, setEndTime] = useState("19:30");
   const [price, setPrice] = useState("");
@@ -64,6 +64,18 @@ export default function MensalistaManagement({
     }
   };
 
+  const toggleDay = (dayValue: number) => {
+    if (selectedDays.includes(dayValue)) {
+      if (selectedDays.length > 1) {
+        setSelectedDays(selectedDays.filter(d => d !== dayValue));
+      } else {
+        showError("Selecione pelo menos um dia da semana.");
+      }
+    } else {
+      setSelectedDays([...selectedDays, dayValue].sort((a, b) => a - b));
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName || !startTime || !endTime || !price || !fieldId) {
@@ -71,26 +83,34 @@ export default function MensalistaManagement({
       return;
     }
 
+    if (selectedDays.length === 0) {
+      showError("Por favor, selecione pelo menos um dia da semana.");
+      return;
+    }
+
     const selectedField = fields.find(f => f.id === fieldId);
     const customTimeSlot = `${startTime} - ${endTime}`;
 
-    const newMensalista = {
-      id: Date.now().toString(),
-      customerName,
-      customerPhone,
-      fieldId,
-      fieldName: selectedField ? selectedField.name : "Quadra",
-      sport,
-      dayOfWeek: parseInt(dayOfWeek),
-      timeSlot: customTimeSlot,
-      price: parseFloat(price),
-      active: true,
-      recurrence,
-      paymentMethod
-    };
+    // Cadastra um registro de mensalista para cada dia selecionado
+    selectedDays.forEach((day, index) => {
+      const newMensalista = {
+        id: `${Date.now()}-${day}-${index}`,
+        customerName,
+        customerPhone,
+        fieldId,
+        fieldName: selectedField ? selectedField.name : "Quadra",
+        sport,
+        dayOfWeek: day,
+        timeSlot: customTimeSlot,
+        price: parseFloat(price),
+        active: true,
+        recurrence,
+        paymentMethod
+      };
+      onAddMensalista(newMensalista);
+    });
 
-    onAddMensalista(newMensalista);
-    showSuccess("Mensalista cadastrado com sucesso!");
+    showSuccess(`Mensalista cadastrado com sucesso para ${selectedDays.length} dia(s) da semana!`);
     
     // Reset
     setCustomerName("");
@@ -98,6 +118,7 @@ export default function MensalistaManagement({
     setStartTime("18:00");
     setEndTime("19:30");
     setPrice("");
+    setSelectedDays([1]);
     setIsOpen(false);
   };
 
@@ -106,7 +127,7 @@ export default function MensalistaManagement({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-sm">
         <div>
           <h2 className="text-xl font-bold text-white">Mensalistas</h2>
-          <p className="text-sm text-slate-400">Gerencie os clientes mensalistas com horários fixos semanais</p>
+          <p className="text-sm text-slate-400">Gerencie os clientes mensalistas com horários fixos semanais (suporta múltiplos dias)</p>
         </div>
         <Button 
           onClick={() => setIsOpen(true)}
@@ -178,7 +199,7 @@ export default function MensalistaManagement({
                 <Button
                   variant="ghost"
                   onClick={() => {
-                    if (confirm(`Deseja realmente excluir o mensalista "${m.customerName}"?`)) {
+                    if (confirm(`Deseja realmente excluir o mensalista "${m.customerName}" para este dia?`)) {
                       onDeleteMensalista(m.id);
                       showSuccess("Mensalista excluído com sucesso!");
                     }
@@ -207,7 +228,7 @@ export default function MensalistaManagement({
             <div className="bg-gradient-to-r from-slate-950 to-slate-900 p-6 text-white flex justify-between items-center border-b border-slate-800 shrink-0">
               <div>
                 <h3 className="text-xl font-bold">Novo Mensalista</h3>
-                <p className="text-xs text-slate-400 mt-1">Cadastre um horário fixo semanal</p>
+                <p className="text-xs text-slate-400 mt-1">Cadastre horários fixos semanais</p>
               </div>
               <button onClick={() => setIsOpen(false)} className="p-1.5 rounded-full bg-white/10 hover:bg-white/20">
                 <X size={20} />
@@ -216,10 +237,10 @@ export default function MensalistaManagement({
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
               <div className="space-y-1">
-                <Label htmlFor="mName" className="text-slate-300 font-semibold">Nome do Cliente *</Label>
+                <Label htmlFor="mName" className="text-slate-300 font-semibold">Nome do Cliente / Escolinha *</Label>
                 <Input
                   id="mName"
-                  placeholder="Ex: Carlos Silva"
+                  placeholder="Ex: Escolinha de Futebol Fla"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   className="rounded-xl border-slate-800 bg-slate-950 text-white"
@@ -270,18 +291,28 @@ export default function MensalistaManagement({
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-slate-300 font-semibold">Dia da Semana</Label>
-                <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
-                  <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-950 border-slate-800 text-white">
-                    {DAYS_OF_WEEK.map(d => (
-                      <SelectItem key={d.value} value={d.value.toString()}>{d.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Multi-select Days of Week */}
+              <div className="space-y-2">
+                <Label className="text-slate-300 font-semibold block">Dias da Semana * (Selecione um ou mais)</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {DAYS_OF_WEEK.map((d) => {
+                    const isSelected = selectedDays.includes(d.value);
+                    return (
+                      <button
+                        key={d.value}
+                        type="button"
+                        onClick={() => toggleDay(d.value)}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
+                          isSelected
+                            ? 'bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-600/20'
+                            : 'border-slate-800 text-slate-400 hover:bg-slate-850'
+                        }`}
+                      >
+                        {d.short}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Custom/Broken Hours Inputs for Mensalista */}
@@ -344,7 +375,7 @@ export default function MensalistaManagement({
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="mPrice" className="text-slate-300 font-semibold">Valor Mensal (R$) *</Label>
+                <Label htmlFor="mPrice" className="text-slate-300 font-semibold">Valor Mensal (R$ por dia selecionado) *</Label>
                 <Input
                   id="mPrice"
                   type="number"
