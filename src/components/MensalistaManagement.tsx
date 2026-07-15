@@ -27,13 +27,6 @@ const DAYS_OF_WEEK = [
   { value: 6, label: "Sábado" }
 ];
 
-const TIME_SLOTS = [
-  "08:00 - 09:00", "09:00 - 10:00", "10:00 - 11:00", "11:00 - 12:00",
-  "12:00 - 13:00", "13:00 - 14:00", "14:00 - 15:00", "15:00 - 16:00",
-  "16:00 - 17:00", "17:00 - 18:00", "18:00 - 19:00", "19:00 - 20:00",
-  "20:00 - 21:00", "21:00 - 22:00", "22:00 - 23:00"
-];
-
 export default function MensalistaManagement({ 
   mensalistas, 
   fields, 
@@ -47,19 +40,21 @@ export default function MensalistaManagement({
   const [fieldId, setFieldId] = useState(fields[0]?.id || "");
   const [sport, setSport] = useState("Futebol");
   const [dayOfWeek, setDayOfWeek] = useState("1");
-  const [timeSlot, setTimeSlot] = useState("");
+  const [startTime, setStartTime] = useState("18:00");
+  const [endTime, setEndTime] = useState("19:30");
   const [price, setPrice] = useState("");
   const [recurrence, setRecurrence] = useState("weekly"); // weekly, biweekly, monthly_3x, custom
   const [paymentMethod, setPaymentMethod] = useState("Pix");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerName || !timeSlot || !price) {
+    if (!customerName || !startTime || !endTime || !price) {
       showError("Por favor, preencha todos os campos obrigatórios.");
       return;
     }
 
     const selectedField = fields.find(f => f.id === fieldId);
+    const customTimeSlot = `${startTime} - ${endTime}`;
 
     const newMensalista = {
       id: Date.now().toString(),
@@ -69,7 +64,7 @@ export default function MensalistaManagement({
       fieldName: selectedField ? selectedField.name : "Quadra",
       sport,
       dayOfWeek: parseInt(dayOfWeek),
-      timeSlot,
+      timeSlot: customTimeSlot,
       price: parseFloat(price),
       active: true,
       recurrence,
@@ -82,7 +77,8 @@ export default function MensalistaManagement({
     // Reset
     setCustomerName("");
     setCustomerPhone("");
-    setTimeSlot("");
+    setStartTime("18:00");
+    setEndTime("19:30");
     setPrice("");
     setIsOpen(false);
   };
@@ -92,7 +88,7 @@ export default function MensalistaManagement({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-sm">
         <div>
           <h2 className="text-xl font-bold text-white">Mensalistas</h2>
-          <p className="text-sm text-slate-400">Gerencie os clients mensalistas com horários fixos semanais</p>
+          <p className="text-sm text-slate-400">Gerencie os clientes mensalistas com horários fixos semanais</p>
         </div>
         <Button 
           onClick={() => setIsOpen(true)}
@@ -256,33 +252,44 @@ export default function MensalistaManagement({
                 </div>
               </div>
 
+              <div className="space-y-1">
+                <Label className="text-slate-300 font-semibold">Dia da Semana</Label>
+                <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
+                  <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-950 border-slate-800 text-white">
+                    {DAYS_OF_WEEK.map(d => (
+                      <SelectItem key={d.value} value={d.value.toString()}>{d.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Custom/Broken Hours Inputs for Mensalista */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label className="text-slate-300 font-semibold">Dia da Semana</Label>
-                  <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
-                    <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-950 border-slate-800 text-white">
-                      {DAYS_OF_WEEK.map(d => (
-                        <SelectItem key={d.value} value={d.value.toString()}>{d.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="mStart" className="text-slate-300 font-semibold">Hora Início *</Label>
+                  <Input
+                    id="mStart"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="rounded-xl border-slate-800 bg-slate-950 text-white"
+                    required
+                  />
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-slate-300 font-semibold">Horário *</Label>
-                  <Select value={timeSlot} onValueChange={setTimeSlot}>
-                    <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-950 border-slate-800 text-white">
-                      {TIME_SLOTS.map(slot => (
-                        <SelectItem key={slot} value={slot}>{slot}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="mEnd" className="text-slate-300 font-semibold">Hora Fim *</Label>
+                  <Input
+                    id="mEnd"
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="rounded-xl border-slate-800 bg-slate-950 text-white"
+                    required
+                  />
                 </div>
               </div>
 
