@@ -18,6 +18,7 @@ import { getSupabaseClient } from '@/lib/supabase';
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { Menu, Cloud, CloudLightning, CloudOff } from 'lucide-react';
 import { showSuccess, showError } from "@/utils/toast";
+import { keysToCamel, keysToSnake } from '@/lib/utils';
 
 // Mock initial data
 const INITIAL_FIELDS = [
@@ -125,67 +126,67 @@ export default function Index() {
       // 1. Fields
       const { data: fieldsData } = await supabase.from('fields').select('*');
       if (fieldsData && fieldsData.length > 0) {
-        setFields(fieldsData);
+        setFields(keysToCamel(fieldsData));
       } else {
         // Seed initial fields
-        await supabase.from('fields').insert(INITIAL_FIELDS);
+        await supabase.from('fields').insert(keysToSnake(INITIAL_FIELDS));
         setFields(INITIAL_FIELDS);
       }
 
       // 2. Customers
       const { data: customersData } = await supabase.from('customers').select('*');
       if (customersData && customersData.length > 0) {
-        setCustomers(customersData);
+        setCustomers(keysToCamel(customersData));
       } else {
-        await supabase.from('customers').insert(INITIAL_CUSTOMERS);
+        await supabase.from('customers').insert(keysToSnake(INITIAL_CUSTOMERS));
         setCustomers(INITIAL_CUSTOMERS);
       }
 
       // 3. Bookings
       const { data: bookingsData } = await supabase.from('bookings').select('*');
-      if (bookingsData) setBookings(bookingsData);
+      if (bookingsData) setBookings(keysToCamel(bookingsData));
 
       // 4. Transactions
       const { data: transactionsData } = await supabase.from('transactions').select('*');
-      if (transactionsData) setTransactions(transactionsData);
+      if (transactionsData) setTransactions(keysToCamel(transactionsData));
 
       // 5. Settings
       const { data: settingsData } = await supabase.from('settings').select('*').eq('id', 'default').single();
       if (settingsData) {
-        setSettings(settingsData);
+        setSettings(keysToCamel(settingsData));
       } else {
-        await supabase.from('settings').insert(INITIAL_SETTINGS);
+        await supabase.from('settings').insert(keysToSnake(INITIAL_SETTINGS));
         setSettings(INITIAL_SETTINGS);
       }
 
       // 6. Blocked Slots
       const { data: blockedData } = await supabase.from('blocked_slots').select('*');
-      if (blockedData) setBlockedSlots(blockedData);
+      if (blockedData) setBlockedSlots(keysToCamel(blockedData));
 
       // 7. Mensalistas
       const { data: mensalistasData } = await supabase.from('mensalistas').select('*');
-      if (mensalistasData) setMensalistas(mensalistasData);
+      if (mensalistasData) setMensalistas(keysToCamel(mensalistasData));
 
       // 8. Eventos
       const { data: eventosData } = await supabase.from('eventos').select('*');
-      if (eventosData) setEventos(eventosData);
+      if (eventosData) setEventos(keysToCamel(eventosData));
 
       // 9. Accounts Payable
       const { data: payableData } = await supabase.from('accounts_payable').select('*');
-      if (payableData) setAccountsPayable(payableData);
+      if (payableData) setAccountsPayable(keysToCamel(payableData));
 
       // 10. Products
       const { data: productsData } = await supabase.from('products').select('*');
       if (productsData && productsData.length > 0) {
-        setProducts(productsData);
+        setProducts(keysToCamel(productsData));
       } else {
-        await supabase.from('products').insert(INITIAL_PRODUCTS);
+        await supabase.from('products').insert(keysToSnake(INITIAL_PRODUCTS));
         setProducts(INITIAL_PRODUCTS);
       }
 
       // 11. Sales
       const { data: salesData } = await supabase.from('sales').select('*');
-      if (salesData) setSales(salesData);
+      if (salesData) setSales(keysToCamel(salesData));
 
       setSyncStatus('synced');
     } catch (err) {
@@ -250,7 +251,7 @@ export default function Index() {
   const handleAddField = async (newField: any) => {
     const supabase = getSupabaseClient();
     if (supabase) {
-      await supabase.from('fields').insert(newField);
+      await supabase.from('fields').insert(keysToSnake(newField));
     }
     setFields([...fields, newField]);
   };
@@ -266,7 +267,7 @@ export default function Index() {
   const handleUpdateField = async (updatedField: any) => {
     const supabase = getSupabaseClient();
     if (supabase) {
-      await supabase.from('fields').update(updatedField).eq('id', updatedField.id);
+      await supabase.from('fields').update(keysToSnake(updatedField)).eq('id', updatedField.id);
     }
     setFields(fields.map(f => f.id === updatedField.id ? updatedField : f));
   };
@@ -275,7 +276,7 @@ export default function Index() {
   const handleAddBooking = async (newBooking: any) => {
     const supabase = getSupabaseClient();
     if (supabase) {
-      await supabase.from('bookings').insert(newBooking);
+      await supabase.from('bookings').insert(keysToSnake(newBooking));
     }
     setBookings([newBooking, ...bookings]);
     
@@ -290,7 +291,7 @@ export default function Index() {
         paymentMethod: newBooking.paymentMethod || 'Pix'
       };
       if (supabase) {
-        await supabase.from('transactions').insert(newTransaction);
+        await supabase.from('transactions').insert(keysToSnake(newTransaction));
       }
       setTransactions([newTransaction, ...transactions]);
     }
@@ -324,7 +325,7 @@ export default function Index() {
             paymentMethod: b.paymentMethod || 'Pix'
           };
           if (supabase) {
-            supabase.from('transactions').insert(newTransaction).then();
+            supabase.from('transactions').insert(keysToSnake(newTransaction)).then();
           }
           setTransactions(prev => [newTransaction, ...prev]);
 
@@ -346,7 +347,7 @@ export default function Index() {
   const handleBlockSlot = async (newBlock: any) => {
     const supabase = getSupabaseClient();
     if (supabase) {
-      await supabase.from('blocked_slots').insert(newBlock);
+      await supabase.from('blocked_slots').insert(keysToSnake(newBlock));
     }
     setBlockedSlots([...blockedSlots, newBlock]);
   };
@@ -363,7 +364,7 @@ export default function Index() {
   const handleAddMensalista = async (newMensalista: any) => {
     const supabase = getSupabaseClient();
     if (supabase) {
-      await supabase.from('mensalistas').insert(newMensalista);
+      await supabase.from('mensalistas').insert(keysToSnake(newMensalista));
     }
     setMensalistas([...mensalistas, newMensalista]);
     
@@ -377,7 +378,7 @@ export default function Index() {
       paymentMethod: newMensalista.paymentMethod || 'Pix'
     };
     if (supabase) {
-      await supabase.from('transactions').insert(newTransaction);
+      await supabase.from('transactions').insert(keysToSnake(newTransaction));
     }
     setTransactions([newTransaction, ...transactions]);
   };
@@ -406,7 +407,7 @@ export default function Index() {
   const handleAddEvento = async (newEvento: any) => {
     const supabase = getSupabaseClient();
     if (supabase) {
-      await supabase.from('eventos').insert(newEvento);
+      await supabase.from('eventos').insert(keysToSnake(newEvento));
     }
     setEventos([...eventos, newEvento]);
     const newTransaction = {
@@ -419,7 +420,7 @@ export default function Index() {
       paymentMethod: newEvento.paymentMethod || 'Pix'
     };
     if (supabase) {
-      await supabase.from('transactions').insert(newTransaction);
+      await supabase.from('transactions').insert(keysToSnake(newTransaction));
     }
     setTransactions([newTransaction, ...transactions]);
   };
@@ -436,7 +437,7 @@ export default function Index() {
   const handleAddAccount = async (newAccount: any) => {
     const supabase = getSupabaseClient();
     if (supabase) {
-      await supabase.from('accounts_payable').insert(newAccount);
+      await supabase.from('accounts_payable').insert(keysToSnake(newAccount));
     }
     setAccountsPayable([...accountsPayable, newAccount]);
   };
@@ -468,7 +469,7 @@ export default function Index() {
           paymentMethod: 'Pix'
         };
         if (supabase) {
-          await supabase.from('transactions').insert(newTransaction);
+          await supabase.from('transactions').insert(keysToSnake(newTransaction));
         }
         setTransactions(prev => [newTransaction, ...prev]);
       }
@@ -480,7 +481,7 @@ export default function Index() {
   const handleAddProduct = async (newProduct: any) => {
     const supabase = getSupabaseClient();
     if (supabase) {
-      await supabase.from('products').insert(newProduct);
+      await supabase.from('products').insert(keysToSnake(newProduct));
     }
     setProducts([...products, newProduct]);
   };
@@ -496,7 +497,7 @@ export default function Index() {
   const handleUpdateProduct = async (updatedProduct: any) => {
     const supabase = getSupabaseClient();
     if (supabase) {
-      await supabase.from('products').update(updatedProduct).eq('id', updatedProduct.id);
+      await supabase.from('products').update(keysToSnake(updatedProduct)).eq('id', updatedProduct.id);
     }
     setProducts(products.map(p => p.id === updatedProduct.id ? updatedProduct : p));
   };
@@ -505,7 +506,7 @@ export default function Index() {
   const handleAddSale = async (newSale: any) => {
     const supabase = getSupabaseClient();
     if (supabase) {
-      await supabase.from('sales').insert(newSale);
+      await supabase.from('sales').insert(keysToSnake(newSale));
     }
     setSales([newSale, ...sales]);
     
@@ -531,7 +532,7 @@ export default function Index() {
       paymentMethod: newSale.paymentMethod || 'Pix'
     };
     if (supabase) {
-      await supabase.from('transactions').insert(newTransaction);
+      await supabase.from('transactions').insert(keysToSnake(newTransaction));
     }
     setTransactions(prev => [newTransaction, ...prev]);
   };

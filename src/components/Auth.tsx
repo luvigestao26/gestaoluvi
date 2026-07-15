@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getSupabaseClient } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Lock, Mail, UserPlus, LogIn, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Lock, Mail, UserPlus, LogIn, AlertCircle, ArrowLeft, KeyRound } from 'lucide-react';
 import { showSuccess, showError } from "@/utils/toast";
 
 interface AuthProps {
@@ -14,10 +14,31 @@ interface AuthProps {
 }
 
 export default function Auth({ onAuthSuccess }: AuthProps) {
-  const [activeTab, setActiveTab] = useState<'login' | 'register' | 'recover'>('login');
+  const [activeTab, setActiveTab] = useState<'login' | 'register' | 'recover' | 'reset'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Detect recovery mode from URL hash or Supabase session
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+
+    // Check if URL contains recovery parameters
+    const hash = window.location.hash;
+    if (hash && (hash.includes('type=recovery') || hash.includes('recovery'))) {
+      setActiveTab('reset');
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setActiveTab('reset');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,12 +61,12 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
         if (error) throw error;
         
         if (data.user) {
-          showSuccess("Cadastro realizado! Verifique sua caixa de entrada e spam para confirmar o e-mail.");
-          
-          const { data: sessionData } = await supabase.auth.getSession();
-          if (sessionData.session?.user) {
-            onAuthSuccess(sessionData.session.user);
+          // Se o usuário já foi confirmado automaticamente (configuração do Supabase)
+          if (data.session) {
+            showSuccess("Cadastro realizado com sucesso!");
+            onAuthSuccess(data.user);
           } else {
+            showSuccess("Cadastro realizado! Verifique sua caixa de entrada para confirmar o e-mail.");
             setActiveTab('login');
           }
         }
@@ -56,6 +77,15 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
         if (error) throw error;
         showSuccess("E-mail de recuperação enviado! Verifique sua caixa de entrada.");
         setActiveTab('login');
+      } else if (activeTab === 'reset') {
+        const { error } = await supabase.auth.updateUser({
+          password: newPassword
+        });
+        if (error) throw error;
+        showSuccess("Sua senha foi redefinida com sucesso! Faça login com a nova senha.");
+        setActiveTab('login');
+        // Limpa o hash da URL
+        window.history.replaceState(null, '', window.location.pathname);
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
@@ -88,8 +118,8 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
 
         {/* Auth Card */}
         <Card className="border-slate-800 bg-slate-900 shadow-xl rounded-3xl overflow-hidden">
-          {/* Custom Tab Switcher (Only show if not in recovery mode) */}
-          {activeTab !== 'recover' ? (
+          {/* Custom Tab Switcher */}
+          {activeTab !== 'recover' && activeTab !== 'reset' ? (
             <div className="p-4 bg-slate-950/50 border-b border-slate-800/60 flex gap-2">
               <button
                 type="button"
@@ -134,11 +164,13 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
               {activeTab === 'register' && "Criar uma nova conta"}
               {activeTab === 'login' && "Acessar sua conta"}
               {activeTab === 'recover' && "Recuperar sua senha"}
+              {activeTab === 'reset' && "Definir nova senha"}
             </CardTitle>
             <CardDescription className="text-slate-400">
               {activeTab === 'register' && "Cadastre-se para salvar seus dados na nuvem com segurança"}
               {activeTab === 'login' && "Entre para sincronizar seus agendamentos, vendas e finanças"}
               {activeTab === 'recover' && "Digite seu e-mail para receber as instruções de redefinição"}
+              {activeTab === 'reset' && "Digite sua nova senha de acesso abaixo"}
             </CardDescription>
           </CardHeader>
 
@@ -147,29 +179,31 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
               <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-900/50 text-amber-400 text-xs flex gap-2 items-start">
                 <AlertCircle size={16} className="shrink-0 mt-0.5" />
                 <p>
-                  <strong>Aviso:</strong> Por padrão, o Supabase exige confirmação de e-mail. Se você não receber o e-mail, desative a opção "Confirm email" nas configurações de autenticação (Providers - Email) no painel do seu projeto Supabase.
+                  <strong>Dica:</strong> Se o e-mail de confirmação demorar a chegar, você pode desativar a confirmação de e-mail no painel do seu Supabase em <em>Authentication {"->"} Providers {"->"} Email {"->"} Confirm email</em> para permitir login imediato.
                 </p>
               </div>
             )}
 
             <form onSubmit={handleAuth} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-slate-300 font-semibold">E-mail</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 rounded-xl border-slate-800 bg-slate-950 text-white focus:ring-blue-500"
-                    required
-                  />
+              {activeTab !== 'reset' && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-slate-300 font-semibold">E-mail</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-10 rounded-xl border-slate-800 bg-slate-950 text-white focus:ring-blue-500"
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {activeTab !== 'recover' && (
+              {activeTab !== 'recover' && activeTab !== 'reset' && (
                 <div className="space-y-1.5">
                   <div className="flex justify-between items-center">
                     <Label htmlFor="password" className="text-slate-300 font-semibold">Senha</Label>
@@ -198,6 +232,24 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                 </div>
               )}
 
+              {activeTab === 'reset' && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="newPassword" className="text-slate-300 font-semibold">Nova Senha</Label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      placeholder="Digite a nova senha"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="pl-10 rounded-xl border-slate-800 bg-slate-950 text-white focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
               <Button
                 type="submit"
                 disabled={loading}
@@ -205,7 +257,8 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
               >
                 {loading ? "Carregando..." : 
                  activeTab === 'register' ? "Criar Conta" : 
-                 activeTab === 'recover' ? "Enviar Link de Recuperação" : "Entrar"}
+                 activeTab === 'recover' ? "Enviar Link de Recuperação" : 
+                 activeTab === 'reset' ? "Salvar Nova Senha" : "Entrar"}
               </Button>
             </form>
           </CardContent>
