@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Clock, 
   Plus, 
@@ -65,7 +65,7 @@ export default function BookingCalendar({
   onAddMensalista
 }: BookingCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [selectedFieldId, setSelectedFieldId] = useState<string>(fields[0]?.id || "");
+  const [selectedFieldId, setSelectedFieldId] = useState<string>("");
   const [isNewBookingOpen, setIsNewBookingOpen] = useState(false);
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   
@@ -89,6 +89,22 @@ export default function BookingCalendar({
   const [blockEndTime, setBlockEndTime] = useState("11:00");
   const [blockType, setBlockType] = useState<'single' | 'monthly'>('single');
 
+  // Sync selectedFieldId when fields load asynchronously
+  useEffect(() => {
+    if (fields.length > 0 && !selectedFieldId) {
+      setSelectedFieldId(fields[0].id);
+    }
+  }, [fields, selectedFieldId]);
+
+  // Automatically update sport and price when selectedFieldId changes
+  useEffect(() => {
+    const field = fields.find(f => f.id === selectedFieldId);
+    if (field) {
+      setSelectedSport(field.sport);
+      setPrice(field.pricePerHour.toString());
+    }
+  }, [selectedFieldId, fields]);
+
   // Get day of week for selected date (0 = Sunday, 1 = Monday, etc.)
   const selectedDayOfWeek = new Date(selectedDate + 'T00:00:00').getDay();
 
@@ -99,7 +115,7 @@ export default function BookingCalendar({
 
   // Filter mensalistas for selected day of week and field, respecting recurrence
   const activeMensalistas = mensalistas.filter(m => {
-    if (!m.active || m.fieldId !== selectedFieldId || m.dayOfWeek !== selectedDayOfWeek) {
+    if (!m.active || m.fieldId !== selectedFieldId || Number(m.dayOfWeek) !== selectedDayOfWeek) {
       return false;
     }
 

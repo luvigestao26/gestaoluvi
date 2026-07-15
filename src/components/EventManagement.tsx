@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Calendar, Clock, DollarSign, Tag, X, MapPin } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,13 +24,20 @@ export default function EventManagement({ eventos, fields, onAddEvento, onDelete
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("18:00");
   const [price, setPrice] = useState("");
-  const [fieldId, setFieldId] = useState(fields[0]?.id || "");
+  const [fieldId, setFieldId] = useState("");
   const [recurrence, setRecurrence] = useState("once"); // once, weekly, biweekly, monthly_3x, custom
   const [paymentMethod, setPaymentMethod] = useState("Pix");
 
+  // Sync fieldId when fields load asynchronously
+  useEffect(() => {
+    if (fields.length > 0 && !fieldId) {
+      setFieldId(fields[0].id);
+    }
+  }, [fields, fieldId]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !date || !price) {
+    if (!title || !date || !price || !fieldId) {
       showError("Por favor, preencha todos os campos obrigatórios.");
       return;
     }

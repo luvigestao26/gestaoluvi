@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, DollarSign, Search, Trash2, User, Check, X, Plus, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ export default function DiaristasManagement({
   // Form states for new Diarista booking
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [selectedFieldId, setSelectedFieldId] = useState(fields[0]?.id || "");
+  const [selectedFieldId, setSelectedFieldId] = useState("");
   const [selectedSport, setSelectedSport] = useState("Futebol");
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [startTime, setStartTime] = useState("18:00");
@@ -40,6 +40,15 @@ export default function DiaristasManagement({
   const [price, setPrice] = useState("");
   const [isPaid, setIsPaid] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("Pix");
+
+  // Sync selectedFieldId when fields load asynchronously
+  useEffect(() => {
+    if (fields.length > 0 && !selectedFieldId) {
+      setSelectedFieldId(fields[0].id);
+      setSelectedSport(fields[0].sport);
+      setPrice(fields[0].pricePerHour.toString());
+    }
+  }, [fields, selectedFieldId]);
 
   const filteredBookings = bookings.filter(b => 
     b.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, User, Calendar, Clock, DollarSign, Check, X, ShieldCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,7 @@ export default function MensalistaManagement({
   const [isOpen, setIsOpen] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [fieldId, setFieldId] = useState(fields[0]?.id || "");
+  const [fieldId, setFieldId] = useState("");
   const [sport, setSport] = useState("Futebol");
   const [dayOfWeek, setDayOfWeek] = useState("1");
   const [startTime, setStartTime] = useState("18:00");
@@ -46,9 +46,27 @@ export default function MensalistaManagement({
   const [recurrence, setRecurrence] = useState("weekly"); // weekly, biweekly, monthly_3x, custom
   const [paymentMethod, setPaymentMethod] = useState("Pix");
 
+  // Sync fieldId when fields load asynchronously
+  useEffect(() => {
+    if (fields.length > 0 && !fieldId) {
+      setFieldId(fields[0].id);
+      setSport(fields[0].sport);
+      setPrice(fields[0].pricePerHour.toString());
+    }
+  }, [fields, fieldId]);
+
+  const handleFieldChange = (value: string) => {
+    setFieldId(value);
+    const field = fields.find(f => f.id === value);
+    if (field) {
+      setSport(field.sport);
+      setPrice(field.pricePerHour.toString());
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerName || !startTime || !endTime || !price) {
+    if (!customerName || !startTime || !endTime || !price || !fieldId) {
       showError("Por favor, preencha todos os campos obrigatórios.");
       return;
     }
@@ -128,7 +146,7 @@ export default function MensalistaManagement({
               <div className="flex items-center gap-2">
                 <Calendar size={14} className="text-slate-400" />
                 <span className="font-medium text-slate-200">
-                  {DAYS_OF_WEEK.find(d => d.value === m.dayOfWeek)?.label}
+                  {DAYS_OF_WEEK.find(d => d.value === Number(m.dayOfWeek))?.label}
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -223,7 +241,7 @@ export default function MensalistaManagement({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <Label className="text-slate-300 font-semibold">Quadra</Label>
-                  <Select value={fieldId} onValueChange={setFieldId}>
+                  <Select value={fieldId} onValueChange={handleFieldChange}>
                     <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
                       <SelectValue />
                     </SelectTrigger>
