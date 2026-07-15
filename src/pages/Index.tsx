@@ -693,11 +693,13 @@ export default function Index() {
               blockedSlots={blockedSlots}
               mensalistas={mensalistas}
               eventos={eventos}
+              settings={settings}
               onAddBooking={handleAddBooking}
               onDeleteBooking={handleDeleteBooking}
               onTogglePaid={handleTogglePaid}
               onBlockSlot={handleBlockSlot}
               onUnblockSlot={handleUnblockSlot}
+              onAddMensalista={handleAddMensalista}
             />
           )}
 

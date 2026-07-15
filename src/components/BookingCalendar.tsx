@@ -10,7 +10,9 @@ import {
   Unlock, 
   Users,
   CalendarDays,
-  Award
+  Award,
+  UserCheck,
+  Calendar
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,11 +28,13 @@ interface BookingCalendarProps {
   blockedSlots: any[];
   mensalistas: any[];
   eventos: any[];
+  settings?: any;
   onAddBooking: (booking: any) => void;
   onDeleteBooking: (id: string) => void;
   onTogglePaid: (id: string) => void;
   onBlockSlot: (block: any) => void;
   onUnblockSlot: (id: string) => void;
+  onAddMensalista?: (mensalista: any) => void;
 }
 
 // Helper functions for time calculations
@@ -52,18 +56,23 @@ export default function BookingCalendar({
   blockedSlots,
   mensalistas,
   eventos,
+  settings,
   onAddBooking,
   onDeleteBooking,
   onTogglePaid,
   onBlockSlot,
-  onUnblockSlot
+  onUnblockSlot,
+  onAddMensalista
 }: BookingCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedFieldId, setSelectedFieldId] = useState<string>(fields[0]?.id || "");
   const [isNewBookingOpen, setIsNewBookingOpen] = useState(false);
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   
-  // Form states for booking
+  // Toggle between Diarista and Mensalista in the creation modal
+  const [bookingType, setBookingType] = useState<'diarista' | 'mensalista'>('diarista');
+
+  // Form states for booking/mensalista
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [selectedSport, setSelectedSport] = useState("Futebol");
@@ -73,6 +82,7 @@ export default function BookingCalendar({
   const [price, setPrice] = useState("");
   const [isPaid, setIsPaid] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("Pix");
+  const [recurrence, setRecurrence] = useState("weekly"); // for mensalista
 
   // Form states for blocking
   const [blockStartTime, setBlockStartTime] = useState("10:00");
@@ -144,10 +154,13 @@ export default function BookingCalendar({
     }
   };
 
-  // Dynamic Timeline Generation Algorithm
+  // Dynamic Timeline Generation Algorithm based on Arena Settings
   const generateTimeline = () => {
-    const dayStart = 480; // 08:00 in minutes
-    const dayEnd = 1380; // 23:00 in minutes
+    const openTime = settings?.openTime || "08:00";
+    const closeTime = settings?.closeTime || "23:00";
+    
+    const dayStart = parseTimeToMinutes(openTime);
+    const dayEnd = parseTimeToMinutes(closeTime);
 
     // Collect all busy intervals
     const busyIntervals: Array<{
@@ -290,22 +303,45 @@ export default function BookingCalendar({
     const customTimeSlot = `${startTime} - ${endTime}`;
     const field = fields.find(f => f.id === selectedFieldId);
 
-    const newBooking = {
-      id: Date.now().toString(),
-      customerName,
-      customerPhone,
-      fieldId: selectedFieldId,
-      fieldName: field ? field.name : "Quadra",
-      sport: selectedSport,
-      date: bookingDate,
-      timeSlot: customTimeSlot,
-      price: parseFloat(price),
-      paid: isPaid,
-      paymentMethod
-    };
-
-    onAddBooking(newBooking);
-    showSuccess("Agendamento realizado com sucesso!");
+    if (bookingType === 'mensalista') {
+      if (!onAddMensalista) {
+        showError("Função de adicionar mensalista não configurada.");
+        return;
+      }
+      const dayOfWeek = new Date(bookingDate + 'T00:00:00').getDay();
+      const newMensalista = {
+        id: Date.now().toString(),
+        customerName,
+        customerPhone,
+        fieldId: selectedFieldId,
+        fieldName: field ? field.name : "Quadra",
+        sport: selectedSport,
+        dayOfWeek,
+        timeSlot: customTimeSlot,
+        price: parseFloat(price),
+        active: true,
+        recurrence,
+        paymentMethod
+      };
+      onAddMensalista(newMensalista);
+      showSuccess("Mensalista fixado com sucesso na agenda!");
+    } else {
+      const newBooking = {
+        id: Date.now().toString(),
+        customerName,
+        customerPhone,
+        fieldId: selectedFieldId,
+        fieldName: field ? field.name : "Quadra",
+        sport: selectedSport,
+        date: bookingDate,
+        timeSlot: customTimeSlot,
+        price: parseFloat(price),
+        paid: isPaid,
+        paymentMethod
+      };
+      onAddBooking(newBooking);
+      showSuccess("Diarista agendado com sucesso!");
+    }
     
     // Reset form
     setCustomerName("");
@@ -375,6 +411,7 @@ export default function BookingCalendar({
           <Button 
             onClick={() => {
               setBookingDate(selectedDate);
+              setBookingType('diarista');
               setIsNewBookingOpen(true);
             }}
             className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2.5 flex items-center gap-2 font-bold text-xs sm:text-sm"
@@ -488,6 +525,7 @@ export default function BookingCalendar({
                           setStartTime(formatMinutesToTime(slot.start));
                           setEndTime(formatMinutesToTime(slot.end));
                           setBookingDate(selectedDate);
+                          setBookingType('diarista');
                           setIsNewBookingOpen(true);
                         }}
                         className="text-blue-400 hover:text-blue-300 hover:bg-blue-950/30 rounded-lg font-bold text-xs"
@@ -619,6 +657,37 @@ export default function BookingCalendar({
             </div>
 
             <form onSubmit={handleSubmitBooking} className="p-6 space-y-4 overflow-y-auto flex-1">
+              {/* Toggle between Diarista and Mensalista */}
+              <div className="space-y-1">
+                <Label className="text-slate-300 font-semibold">Tipo de Agendamento</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBookingType('diarista')}
+                    className={`py-2.5 rounded-xl font-bold text-xs sm:text-sm border transition-all flex items-center justify-center gap-1.5 ${
+                      bookingType === 'diarista'
+                        ? 'bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-600/20'
+                        : 'border-slate-800 text-slate-400 hover:bg-slate-850'
+                    }`}
+                  >
+                    <Users size={16} />
+                    Diarista (Avulso)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBookingType('mensalista')}
+                    className={`py-2.5 rounded-xl font-bold text-xs sm:text-sm border transition-all flex items-center justify-center gap-1.5 ${
+                      bookingType === 'mensalista'
+                        ? 'bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-600/20'
+                        : 'border-slate-800 text-slate-400 hover:bg-slate-850'
+                    }`}
+                  >
+                    <UserCheck size={16} />
+                    Mensalista (Fixo)
+                  </button>
+                </div>
+              </div>
+
               {/* Quick Select Existing Customer */}
               <div className="space-y-1">
                 <Label className="text-slate-300 font-semibold flex items-center gap-1.5">
@@ -698,7 +767,9 @@ export default function BookingCalendar({
 
               {/* Date Picker in Modal */}
               <div className="space-y-1">
-                <Label htmlFor="bookingDate" className="text-slate-300 font-semibold">Data do Agendamento *</Label>
+                <Label htmlFor="bookingDate" className="text-slate-300 font-semibold">
+                  {bookingType === 'mensalista' ? 'Data de Início *' : 'Data do Agendamento *'}
+                </Label>
                 <Input
                   id="bookingDate"
                   type="date"
@@ -738,7 +809,9 @@ export default function BookingCalendar({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label htmlFor="price" className="text-slate-300 font-semibold">Valor (R$) *</Label>
+                  <Label htmlFor="price" className="text-slate-300 font-semibold">
+                    {bookingType === 'mensalista' ? 'Valor Mensal (R$) *' : 'Valor (R$) *'}
+                  </Label>
                   <Input
                     id="price"
                     type="number"
@@ -766,16 +839,35 @@ export default function BookingCalendar({
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2 pt-4">
-                <input
-                  type="checkbox"
-                  id="isPaid"
-                  checked={isPaid}
-                  onChange={(e) => setIsPaid(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-800 text-blue-600 focus:ring-blue-500 bg-slate-950"
-                />
-                <Label htmlFor="isPaid" className="text-slate-300 font-semibold cursor-pointer">Já está pago?</Label>
-              </div>
+              {bookingType === 'mensalista' && (
+                <div className="space-y-1">
+                  <Label className="text-slate-300 font-semibold">Recorrência</Label>
+                  <Select value={recurrence} onValueChange={setRecurrence}>
+                    <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-950 border-slate-800 text-white">
+                      <SelectItem value="weekly">Toda semana</SelectItem>
+                      <SelectItem value="biweekly">De 15 em 15 dias</SelectItem>
+                      <SelectItem value="monthly_3x">3 vezes no mês</SelectItem>
+                      <SelectItem value="custom">Personalizado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {bookingType === 'diarista' && (
+                <div className="flex items-center space-x-2 pt-4">
+                  <input
+                    type="checkbox"
+                    id="isPaid"
+                    checked={isPaid}
+                    onChange={(e) => setIsPaid(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-800 text-blue-600 focus:ring-blue-500 bg-slate-950"
+                  />
+                  <Label htmlFor="isPaid" className="text-slate-300 font-semibold cursor-pointer">Já está pago?</Label>
+                </div>
+              )}
 
               <div className="pt-4 flex gap-3 shrink-0">
                 <Button
