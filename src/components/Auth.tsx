@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Lock, Mail, UserPlus, LogIn, AlertCircle, ArrowLeft, KeyRound } from 'lucide-react';
+import { Lock, Mail, UserPlus, LogIn, ArrowLeft, KeyRound } from 'lucide-react';
 import { showSuccess, showError } from "@/utils/toast";
 
 interface AuthProps {
@@ -51,24 +51,23 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
     setLoading(true);
     try {
       if (activeTab === 'register') {
-        const { data, error } = await supabase.auth.signUp({
+        // Realiza o cadastro simples com e-mail e senha
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
-          options: {
-            emailRedirectTo: window.location.origin,
-          }
         });
-        if (error) throw error;
+        if (signUpError) throw signUpError;
         
-        if (data.user) {
-          // Se o usuário já foi confirmado automaticamente (configuração do Supabase)
-          if (data.session) {
-            showSuccess("Cadastro realizado com sucesso!");
-            onAuthSuccess(data.user);
-          } else {
-            showSuccess("Cadastro realizado! Verifique sua caixa de entrada para confirmar o e-mail.");
-            setActiveTab('login');
-          }
+        // Realiza o login automático imediatamente após o cadastro
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (signInError) throw signInError;
+
+        if (signInData.user) {
+          showSuccess("Conta criada e login realizado com sucesso!");
+          onAuthSuccess(signInData.user);
         }
       } else if (activeTab === 'recover') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -167,7 +166,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
               {activeTab === 'reset' && "Definir nova senha"}
             </CardTitle>
             <CardDescription className="text-slate-400">
-              {activeTab === 'register' && "Cadastre-se para salvar seus dados na nuvem com segurança"}
+              {activeTab === 'register' && "Cadastre-se com e-mail e senha para acessar o painel imediatamente"}
               {activeTab === 'login' && "Entre para sincronizar seus agendamentos, vendas e finanças"}
               {activeTab === 'recover' && "Digite seu e-mail para receber as instruções de redefinição"}
               {activeTab === 'reset' && "Digite sua nova senha de acesso abaixo"}
@@ -175,15 +174,6 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
           </CardHeader>
 
           <CardContent className="space-y-4">
-            {activeTab === 'register' && (
-              <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-900/50 text-amber-400 text-xs flex gap-2 items-start">
-                <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                <p>
-                  <strong>Dica:</strong> Se o e-mail de confirmação demorar a chegar, você pode desativar a confirmação de e-mail no painel do seu Supabase em <em>Authentication {"->"} Providers {"->"} Email {"->"} Confirm email</em> para permitir login imediato.
-                </p>
-              </div>
-            )}
-
             <form onSubmit={handleAuth} className="space-y-4">
               {activeTab !== 'reset' && (
                 <div className="space-y-1.5">
