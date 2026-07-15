@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Lock, Mail, UserPlus, LogIn, AlertCircle } from 'lucide-react';
+import { Lock, Mail, UserPlus, LogIn, AlertCircle, ArrowLeft } from 'lucide-react';
 import { showSuccess, showError } from "@/utils/toast";
 
 interface AuthProps {
@@ -14,7 +14,7 @@ interface AuthProps {
 }
 
 export default function Auth({ onAuthSuccess }: AuthProps) {
-  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
+  const [activeTab, setActiveTab] = useState<'login' | 'register' | 'recover'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,7 +42,6 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
         if (data.user) {
           showSuccess("Cadastro realizado! Verifique sua caixa de entrada e spam para confirmar o e-mail.");
           
-          // Tenta verificar se a sessão já iniciou (caso a confirmação de e-mail esteja desativada no Supabase)
           const { data: sessionData } = await supabase.auth.getSession();
           if (sessionData.session?.user) {
             onAuthSuccess(sessionData.session.user);
@@ -50,6 +49,13 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
             setActiveTab('login');
           }
         }
+      } else if (activeTab === 'recover') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin,
+        });
+        if (error) throw error;
+        showSuccess("E-mail de recuperação enviado! Verifique sua caixa de entrada.");
+        setActiveTab('login');
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
@@ -62,7 +68,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
         }
       }
     } catch (error: any) {
-      showError(error.message || "Erro ao autenticar. Verifique suas credenciais.");
+      showError(error.message || "Erro ao processar solicitação. Verifique os dados informados.");
     } finally {
       setLoading(false);
     }
@@ -82,42 +88,57 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
 
         {/* Auth Card */}
         <Card className="border-slate-800 bg-slate-900 shadow-xl rounded-3xl overflow-hidden">
-          {/* Custom Tab Switcher */}
-          <div className="p-4 bg-slate-950/50 border-b border-slate-800/60 flex gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab('login')}
-              className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'login'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
-              }`}
-            >
-              <LogIn size={16} />
-              Entrar
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('register')}
-              className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'register'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
-              }`}
-            >
-              <UserPlus size={16} />
-              Cadastrar
-            </button>
-          </div>
+          {/* Custom Tab Switcher (Only show if not in recovery mode) */}
+          {activeTab !== 'recover' ? (
+            <div className="p-4 bg-slate-950/50 border-b border-slate-800/60 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab('login')}
+                className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                  activeTab === 'login'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+                }`}
+              >
+                <LogIn size={16} />
+                Entrar
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('register')}
+                className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                  activeTab === 'register'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+                }`}
+              >
+                <UserPlus size={16} />
+                Cadastrar
+              </button>
+            </div>
+          ) : (
+            <div className="p-4 bg-slate-950/50 border-b border-slate-800/60">
+              <button
+                type="button"
+                onClick={() => setActiveTab('login')}
+                className="text-xs text-slate-400 hover:text-white flex items-center gap-1.5 font-semibold transition-colors"
+              >
+                <ArrowLeft size={14} />
+                Voltar para o login
+              </button>
+            </div>
+          )}
 
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-xl font-bold text-white">
-              {activeTab === 'register' ? "Criar uma nova conta" : "Acessar sua conta"}
+              {activeTab === 'register' && "Criar uma nova conta"}
+              {activeTab === 'login' && "Acessar sua conta"}
+              {activeTab === 'recover' && "Recuperar sua senha"}
             </CardTitle>
             <CardDescription className="text-slate-400">
-              {activeTab === 'register' 
-                ? "Cadastre-se para salvar seus dados na nuvem com segurança" 
-                : "Entre para sincronizar seus agendamentos, vendas e finanças"}
+              {activeTab === 'register' && "Cadastre-se para salvar seus dados na nuvem com segurança"}
+              {activeTab === 'login' && "Entre para sincronizar seus agendamentos, vendas e finanças"}
+              {activeTab === 'recover' && "Digite seu e-mail para receber as instruções de redefinição"}
             </CardDescription>
           </CardHeader>
 
@@ -148,28 +169,43 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-slate-300 font-semibold">Senha</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 rounded-xl border-slate-800 bg-slate-950 text-white focus:ring-blue-500"
-                    required
-                  />
+              {activeTab !== 'recover' && (
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="password" className="text-slate-300 font-semibold">Senha</Label>
+                    {activeTab === 'login' && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('recover')}
+                        className="text-xs text-blue-400 hover:text-blue-300 hover:underline font-medium transition-colors"
+                      >
+                        Esqueceu sua senha?
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-10 rounded-xl border-slate-800 bg-slate-950 text-white focus:ring-blue-500"
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <Button
                 type="submit"
                 disabled={loading}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl py-2.5 shadow-lg shadow-blue-600/20 transition-all"
               >
-                {loading ? "Carregando..." : activeTab === 'register' ? "Criar Conta" : "Entrar"}
+                {loading ? "Carregando..." : 
+                 activeTab === 'register' ? "Criar Conta" : 
+                 activeTab === 'recover' ? "Enviar Link de Recuperação" : "Entrar"}
               </Button>
             </form>
           </CardContent>
