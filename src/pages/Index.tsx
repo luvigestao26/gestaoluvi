@@ -39,7 +39,7 @@ const INITIAL_BOOKINGS = [
 ];
 
 const INITIAL_TRANSACTIONS = [
-  { id: '1', description: 'Aluguel Quadra A - Carlos Eduardo', amount: 120, type: 'income', category: 'Aluguel de Quadra', date: new Date().toISOString().split('T')[0], paymentMethod: 'Pix' },
+  { id: 'booking-1', description: 'Aluguel Quadra A - Carlos Eduardo', amount: 120, type: 'income', category: 'Aluguel de Quadra', date: new Date().toISOString().split('T')[0], paymentMethod: 'Pix' },
   { id: '2', description: 'Compra de Bolas de Tênis', amount: 150, type: 'expense', category: 'Manutenção', date: new Date().toISOString().split('T')[0], paymentMethod: 'Pix' },
 ];
 
@@ -282,7 +282,7 @@ export default function Index() {
     
     if (newBooking.paid) {
       const newTransaction = {
-        id: Date.now().toString() + '-t',
+        id: `booking-${newBooking.id}`,
         description: `Aluguel ${newBooking.fieldName} - ${newBooking.customerName}`,
         amount: newBooking.price,
         type: 'income',
@@ -305,8 +305,10 @@ export default function Index() {
     const supabase = getSupabaseClient();
     if (supabase) {
       await supabase.from('bookings').delete().eq('id', id);
+      await supabase.from('transactions').delete().eq('id', `booking-${id}`);
     }
     setBookings(bookings.filter(b => b.id !== id));
+    setTransactions(transactions.filter(t => t.id !== `booking-${id}`));
   };
 
   const handleTogglePaid = async (id: string) => {
@@ -316,7 +318,7 @@ export default function Index() {
         const updatedPaid = !b.paid;
         if (updatedPaid) {
           const newTransaction = {
-            id: Date.now().toString() + '-t',
+            id: `booking-${b.id}`,
             description: `Aluguel ${b.fieldName} - ${b.customerName}`,
             amount: b.price,
             type: 'income',
@@ -332,6 +334,11 @@ export default function Index() {
           const formattedDate = b.date.split('-').reverse().join('/');
           const msg = `Olá, *${b.customerName}*!\n\nConfirmamos o recebimento do seu pagamento para a reserva do dia *${formattedDate}* às *${b.timeSlot}* na *${b.fieldName}*! 💵✅\n\nTudo pronto para o seu jogo. Nos vemos na *${settings.name}*! ⚽🎾`;
           setWhatsappMessage(msg);
+        } else {
+          if (supabase) {
+            supabase.from('transactions').delete().eq('id', `booking-${b.id}`).then();
+          }
+          setTransactions(prev => prev.filter(t => t.id !== `booking-${b.id}`));
         }
         if (supabase) {
           supabase.from('bookings').update({ paid: updatedPaid }).eq('id', id).then();
@@ -369,7 +376,7 @@ export default function Index() {
     setMensalistas([...mensalistas, newMensalista]);
     
     const newTransaction = {
-      id: Date.now().toString() + '-m',
+      id: `mensalista-${newMensalista.id}`,
       description: `Mensalidade: ${newMensalista.customerName}`,
       amount: newMensalista.price,
       type: 'income',
@@ -387,8 +394,10 @@ export default function Index() {
     const supabase = getSupabaseClient();
     if (supabase) {
       await supabase.from('mensalistas').delete().eq('id', id);
+      await supabase.from('transactions').delete().eq('id', `mensalista-${id}`);
     }
     setMensalistas(mensalistas.filter(m => m.id !== id));
+    setTransactions(transactions.filter(t => t.id !== `mensalista-${id}`));
   };
 
   const handleToggleMensalistaActive = async (id: string) => {
@@ -411,7 +420,7 @@ export default function Index() {
     }
     setEventos([...eventos, newEvento]);
     const newTransaction = {
-      id: Date.now().toString() + '-ev',
+      id: `event-${newEvento.id}`,
       description: `Evento: ${newEvento.title}`,
       amount: newEvento.price,
       type: 'income',
@@ -429,8 +438,10 @@ export default function Index() {
     const supabase = getSupabaseClient();
     if (supabase) {
       await supabase.from('eventos').delete().eq('id', id);
+      await supabase.from('transactions').delete().eq('id', `event-${id}`);
     }
     setEventos(eventos.filter(e => e.id !== id));
+    setTransactions(transactions.filter(t => t.id !== `event-${id}`));
   };
 
   // Accounts Payable Handlers
@@ -446,8 +457,10 @@ export default function Index() {
     const supabase = getSupabaseClient();
     if (supabase) {
       await supabase.from('accounts_payable').delete().eq('id', id);
+      await supabase.from('transactions').delete().eq('id', `payable-${id}`);
     }
     setAccountsPayable(accountsPayable.filter(a => a.id !== id));
+    setTransactions(transactions.filter(t => t.id !== `payable-${id}`));
   };
 
   const handleTogglePaidStatus = async (id: string) => {
@@ -460,7 +473,7 @@ export default function Index() {
       }
       if (updatedStatus === 'paid') {
         const newTransaction = {
-          id: Date.now().toString() + '-ap',
+          id: `payable-${target.id}`,
           description: `Pagamento: ${target.description}`,
           amount: target.amount,
           type: 'expense',
@@ -472,6 +485,11 @@ export default function Index() {
           await supabase.from('transactions').insert(keysToSnake(newTransaction));
         }
         setTransactions(prev => [newTransaction, ...prev]);
+      } else {
+        if (supabase) {
+          await supabase.from('transactions').delete().eq('id', `payable-${target.id}`);
+        }
+        setTransactions(prev => prev.filter(t => t.id !== `payable-${target.id}`));
       }
       setAccountsPayable(accountsPayable.map(a => a.id === id ? { ...a, status: updatedStatus } : a));
     }
@@ -523,7 +541,7 @@ export default function Index() {
     setProducts(updatedProducts);
 
     const newTransaction = {
-      id: Date.now().toString() + '-sale',
+      id: `sale-${newSale.id}`,
       description: `Venda: ${newSale.productName} (${newSale.quantity}x)`,
       amount: newSale.total,
       type: 'income',
@@ -555,8 +573,10 @@ export default function Index() {
     }
     if (supabase) {
       await supabase.from('sales').delete().eq('id', id);
+      await supabase.from('transactions').delete().eq('id', `sale-${id}`);
     }
     setSales(sales.filter(s => s.id !== id));
+    setTransactions(transactions.filter(t => t.id !== `sale-${id}`));
   };
 
   // If auth is not checked yet, show a loading spinner

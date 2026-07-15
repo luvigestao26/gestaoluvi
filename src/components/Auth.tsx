@@ -25,9 +25,13 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
     const supabase = getSupabaseClient();
     if (!supabase) return;
 
-    // Check if URL contains recovery parameters
+    // Check if URL contains recovery parameters in hash or search query
     const hash = window.location.hash;
-    if (hash && (hash.includes('type=recovery') || hash.includes('recovery'))) {
+    const search = window.location.search;
+    if (
+      (hash && (hash.includes('type=recovery') || hash.includes('recovery') || hash.includes('access_token'))) ||
+      (search && (search.includes('type=recovery') || search.includes('recovery')))
+    ) {
       setActiveTab('reset');
     }
 
