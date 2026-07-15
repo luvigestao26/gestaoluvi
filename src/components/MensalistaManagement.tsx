@@ -46,6 +46,32 @@ export default function MensalistaManagement({
   const [recurrence, setRecurrence] = useState("weekly"); // weekly, biweekly, monthly_3x, custom
   const [paymentMethod, setPaymentMethod] = useState("Pix");
 
+  // Group mensalistas in the UI to show a single card per customer/schedule group
+  const groupedMensalistas = React.useMemo(() => {
+    const groups: { [key: string]: any } = {};
+    mensalistas.forEach(m => {
+      // Group by customerName, timeSlot, fieldId, price, recurrence, paymentMethod
+      const key = `${m.customerName}-${m.timeSlot}-${m.fieldId}-${m.price}-${m.recurrence}-${m.paymentMethod}`;
+      if (!groups[key]) {
+        groups[key] = {
+          ...m,
+          daysOfWeek: [Number(m.dayOfWeek)],
+          ids: [m.id]
+        };
+      } else {
+        if (!groups[key].daysOfWeek.includes(Number(m.dayOfWeek))) {
+          groups[key].daysOfWeek.push(Number(m.dayOfWeek));
+        }
+        groups[key].ids.push(m.id);
+      }
+    });
+    // Sort days of week for each group
+    Object.values(groups).forEach((g: any) => {
+      g.daysOfWeek.sort((a: number, b: number) => a - b);
+    });
+    return Object.values(groups);
+  }, [mensalistas]);
+
   // Sync fieldId when fields load asynchronously
   useEffect(() => {
     if (fields.length > 0 && !fieldId) {
@@ -139,7 +165,7 @@ export default function MensalistaManagement({
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {mensalistas.map((m) => (
+        {groupedMensalistas.map((m) => (
           <Card key={m.id} className="border-slate-800 shadow-md bg-slate-900 text-white overflow-hidden hover:border-slate-700 transition-all">
             <div className="h-2 bg-blue-500" />
             <CardHeader className="pb-3">
@@ -154,7 +180,10 @@ export default function MensalistaManagement({
                   </div>
                 </div>
                 <button
-                  onClick={() => onToggleActive(m.id)}
+                  onClick={() => {
+                    m.ids.forEach((id: string) => onToggleActive(id));
+                    showSuccess("Status de atividade atualizado!");
+                  }}
                   className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                     m.active ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' : 'bg-slate-800 text-slate-400'
                   }`}
@@ -164,11 +193,15 @@ export default function MensalistaManagement({
               </div>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-slate-300">
-              <div className="flex items-center gap-2">
-                <Calendar size={14} className="text-slate-400" />
-                <span className="font-medium text-slate-200">
-                  {DAYS_OF_WEEK.find(d => d.value === Number(m.dayOfWeek))?.label}
-                </span>
+              <div className="flex items-start gap-2">
+                <Calendar size={14} className="text-slate-400 mt-0.5 shrink-0" />
+                <div className="flex flex-wrap gap-1">
+                  {m.daysOfWeek.map((dayNum: number) => (
+                    <span key={dayNum} className="inline-block bg-slate-800 border border-slate-700 text-slate-200 text-xs px-2 py-0.5 rounded-lg font-semibold">
+                      {DAYS_OF_WEEK.find(d => d.value === dayNum)?.short}
+                    </span>
+                  ))}
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <Clock size={14} className="text-slate-400" />
@@ -191,7 +224,7 @@ export default function MensalistaManagement({
                 <span className="text-xs font-semibold text-emerald-400">{m.paymentMethod || 'Pix'}</span>
               </div>
               <div className="flex items-center justify-between p-2.5 bg-slate-950 border border-slate-800 rounded-xl mt-2">
-                <span className="text-xs text-slate-400">Mensalidade</span>
+                <span className="text-xs text-slate-400">Mensalidade (por dia)</span>
                 <span className="font-bold text-white">R$ {m.price.toFixed(2)}</span>
               </div>
 
@@ -199,8 +232,8 @@ export default function MensalistaManagement({
                 <Button
                   variant="ghost"
                   onClick={() => {
-                    if (confirm(`Deseja realmente excluir o mensalista "${m.customerName}" para este dia?`)) {
-                      onDeleteMensalista(m.id);
+                    if (confirm(`Deseja realmente excluir o mensalista "${m.customerName}" de todos os dias selecionados?`)) {
+                      m.ids.forEach((id: string) => onDeleteMensalista(id));
                       showSuccess("Mensalista excluído com sucesso!");
                     }
                   }}
@@ -214,7 +247,7 @@ export default function MensalistaManagement({
           </Card>
         ))}
 
-        {mensalistas.length === 0 && (
+        {groupedMensalistas.length === 0 && (
           <div className="col-span-full text-center py-12 bg-slate-900 border border-slate-800 rounded-2xl shadow-sm">
             <p className="text-slate-400">Nenhum mensalista cadastrado ainda.</p>
           </div>
