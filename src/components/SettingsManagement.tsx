@@ -24,9 +24,11 @@ export default function SettingsManagement({ arenaSettings, onSaveSettings }: Se
   const [bankName, setBankName] = useState(arenaSettings?.bankName || "Banco Cora");
 
   // Password change states
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPass, setShowPass] = useState(false);
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
   const [passLoading, setPassLoading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -45,16 +47,20 @@ export default function SettingsManagement({ arenaSettings, onSaveSettings }: Se
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentPassword) {
+      showError("Por favor, digite sua senha atual.");
+      return;
+    }
     if (!newPassword) {
       showError("Por favor, digite a nova senha.");
       return;
     }
     if (newPassword !== confirmPassword) {
-      showError("As senhas não coincidem.");
+      showError("As senhas novas não coincidem.");
       return;
     }
     if (newPassword.length < 6) {
-      showError("A senha deve ter pelo menos 6 caracteres.");
+      showError("A nova senha deve ter pelo menos 6 caracteres.");
       return;
     }
 
@@ -63,10 +69,24 @@ export default function SettingsManagement({ arenaSettings, onSaveSettings }: Se
       const supabase = getSupabaseClient();
       if (!supabase) throw new Error("Supabase não configurado.");
 
+      // Primeiro, tentamos validar a senha atual fazendo um re-login rápido por segurança
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: currentPassword
+        });
+        if (signInError) {
+          throw new Error("A senha atual informada está incorreta.");
+        }
+      }
+
+      // Se a senha atual estiver correta, atualiza para a nova senha
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
 
       showSuccess("Senha atualizada com sucesso!");
+      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: any) {
@@ -222,12 +242,35 @@ export default function SettingsManagement({ arenaSettings, onSaveSettings }: Se
             <CardContent>
               <form onSubmit={handlePasswordChange} className="space-y-4">
                 <div className="space-y-1.5">
+                  <Label htmlFor="currentPass" className="text-slate-300 font-semibold">Senha Atual</Label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                    <Input
+                      id="currentPass"
+                      type={showCurrentPass ? "text" : "password"}
+                      placeholder="Digite sua senha atual"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="pl-10 pr-10 rounded-xl border-slate-800 bg-slate-950 text-white focus:ring-blue-500"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPass(!showCurrentPass)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                    >
+                      {showCurrentPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
                   <Label htmlFor="newPass" className="text-slate-300 font-semibold">Nova Senha</Label>
                   <div className="relative">
                     <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                     <Input
                       id="newPass"
-                      type={showPass ? "text" : "password"}
+                      type={showNewPass ? "text" : "password"}
                       placeholder="Mínimo 6 caracteres"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
@@ -236,10 +279,10 @@ export default function SettingsManagement({ arenaSettings, onSaveSettings }: Se
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPass(!showPass)}
+                      onClick={() => setShowNewPass(!showNewPass)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
                     >
-                      {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                      {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
                 </div>
@@ -250,7 +293,7 @@ export default function SettingsManagement({ arenaSettings, onSaveSettings }: Se
                     <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                     <Input
                       id="confirmPass"
-                      type={showPass ? "text" : "password"}
+                      type={showNewPass ? "text" : "password"}
                       placeholder="Repita a nova senha"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
