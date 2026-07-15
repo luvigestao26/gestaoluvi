@@ -34,49 +34,21 @@ const INITIAL_CUSTOMERS = [
   { id: '3', name: 'Roberto Alencar', phone: '(11) 95555-4444', email: 'roberto@email.com', notes: '', createdAt: new Date().toISOString() },
 ];
 
-const INITIAL_BOOKINGS = [
-  { id: '1', customerName: 'Carlos Eduardo', customerPhone: '(11) 98765-4321', fieldId: '1', fieldName: 'Quadra de Futebol Society A', sport: 'Futebol', date: new Date().toISOString().split('T')[0], timeSlot: '19:00 - 20:00', price: 120, paid: true, paymentMethod: 'Pix' },
-  { id: '2', customerName: 'Mariana Souza', customerPhone: '(11) 91234-5678', fieldId: '3', fieldName: 'Arena Beach Tennis 1', sport: 'Beach Tennis', date: new Date().toISOString().split('T')[0], timeSlot: '18:00 - 19:00', price: 80, paid: false, paymentMethod: 'Dinheiro' },
-];
-
-const INITIAL_TRANSACTIONS = [
-  { id: 'booking-1', description: 'Aluguel Quadra A - Carlos Eduardo', amount: 120, type: 'income', category: 'Aluguel de Quadra', date: new Date().toISOString().split('T')[0], paymentMethod: 'Pix' },
-  { id: '2', description: 'Compra de Bolas de Tênis', amount: 150, type: 'expense', category: 'Manutenção', date: new Date().toISOString().split('T')[0], paymentMethod: 'Pix' },
-];
-
 const INITIAL_SETTINGS = {
   id: 'default',
   name: "Gestão Arenas",
   address: "Av. das Flores, 1230 - Centro",
   phone: "(11) 98888-7777",
   openTime: "08:00",
-  closeTime: "00:00", // Fechamento padrão à meia-noite
+  closeTime: "00:00",
   pixKey: "financeiro@gestaoarenas.com",
   bankName: "Banco Cora"
 };
-
-const INITIAL_MENSALISTAS = [
-  { id: '1', customerName: 'Marcos Paulo', customerPhone: '(11) 97777-6666', fieldId: '1', fieldName: 'Quadra de Futebol Society A', sport: 'Futebol', dayOfWeek: 1, timeSlot: '20:00 - 21:00', price: 450, active: true, recurrence: 'weekly', paymentMethod: 'Pix' },
-  { id: '2', customerName: 'Juliana Lima', customerPhone: '(11) 96666-5555', fieldId: '3', fieldName: 'Arena Beach Tennis 1', sport: 'Beach Tennis', dayOfWeek: 3, timeSlot: '19:00 - 20:00', price: 380, active: true, recurrence: 'weekly', paymentMethod: 'Cartão de Crédito' }
-];
-
-const INITIAL_EVENTOS = [
-  { id: '1', title: 'Torneio Interno de Beach Tennis', description: 'Campeonato de duplas mistas', date: new Date().toISOString().split('T')[0], startTime: '08:00', endTime: '18:00', price: 600, fieldId: '3', fieldName: 'Arena Beach Tennis 1', recurrence: 'once', paymentMethod: 'Pix' }
-];
-
-const INITIAL_ACCOUNTS_PAYABLE = [
-  { id: '1', description: 'Conta de Energia Elétrica', amount: 450, dueDate: new Date().toISOString().split('T')[0], category: 'Energia / Água', status: 'pending' },
-  { id: '2', description: 'Manutenção dos Refletores', amount: 300, dueDate: new Date().toISOString().split('T')[0], category: 'Manutenção', status: 'paid' }
-];
 
 const INITIAL_PRODUCTS = [
   { id: '1', name: 'Água Mineral 500ml', category: 'Bebidas', quantity: 120, minQuantity: 20, costPrice: 1.20, salePrice: 3.50 },
   { id: '2', name: 'Refrigerante Lata', category: 'Bebidas', quantity: 80, minQuantity: 15, costPrice: 2.00, salePrice: 5.00 },
   { id: '3', name: 'Grip para Raquete', category: 'Acessórios', quantity: 15, minQuantity: 5, costPrice: 5.00, salePrice: 15.00 }
-];
-
-const INITIAL_SALES = [
-  { id: '1', productId: '1', productName: 'Água Mineral 500ml', quantity: 2, total: 7.00, paymentMethod: 'Pix', customerName: 'Carlos Eduardo', date: new Date().toISOString().split('T')[0] }
 ];
 
 export default function Index() {
@@ -109,7 +81,7 @@ export default function Index() {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           setUser(session.user);
-          await loadAllData();
+          await loadAllData(session.user);
         }
       }
       setAuthChecked(true);
@@ -117,76 +89,81 @@ export default function Index() {
     checkSession();
   }, []);
 
-  // Load all data from individual Supabase tables
-  const loadAllData = async () => {
+  // Load all data from individual Supabase tables scoped by user.id
+  const loadAllData = async (currentUser: any) => {
     const supabase = getSupabaseClient();
-    if (!supabase) return;
+    if (!supabase || !currentUser) return;
 
     setSyncing(true);
     try {
+      const userPrefix = `${currentUser.id}_`;
+
       // 1. Fields
-      const { data: fieldsData } = await supabase.from('fields').select('*');
+      const { data: fieldsData } = await supabase.from('fields').select('*').like('id', `${userPrefix}%`);
       if (fieldsData && fieldsData.length > 0) {
         setFields(keysToCamel(fieldsData));
       } else {
-        // Seed initial fields
-        await supabase.from('fields').insert(keysToSnake(INITIAL_FIELDS));
-        setFields(INITIAL_FIELDS);
+        const userFields = INITIAL_FIELDS.map(f => ({ ...f, id: `${userPrefix}${f.id}` }));
+        await supabase.from('fields').insert(keysToSnake(userFields));
+        setFields(userFields);
       }
 
       // 2. Customers
-      const { data: customersData } = await supabase.from('customers').select('*');
+      const { data: customersData } = await supabase.from('customers').select('*').like('id', `${userPrefix}%`);
       if (customersData && customersData.length > 0) {
         setCustomers(keysToCamel(customersData));
       } else {
-        await supabase.from('customers').insert(keysToSnake(INITIAL_CUSTOMERS));
-        setCustomers(INITIAL_CUSTOMERS);
+        const userCustomers = INITIAL_CUSTOMERS.map(c => ({ ...c, id: `${userPrefix}${c.id}` }));
+        await supabase.from('customers').insert(keysToSnake(userCustomers));
+        setCustomers(userCustomers);
       }
 
       // 3. Bookings
-      const { data: bookingsData } = await supabase.from('bookings').select('*');
+      const { data: bookingsData } = await supabase.from('bookings').select('*').like('id', `${userPrefix}%`);
       if (bookingsData) setBookings(keysToCamel(bookingsData));
 
       // 4. Transactions
-      const { data: transactionsData } = await supabase.from('transactions').select('*');
+      const { data: transactionsData } = await supabase.from('transactions').select('*').like('id', `${userPrefix}%`);
       if (transactionsData) setTransactions(keysToCamel(transactionsData));
 
-      // 5. Settings
-      const { data: settingsData } = await supabase.from('settings').select('*').eq('id', 'default').single();
+      // 5. Settings (Scoped by user.id)
+      const { data: settingsData } = await supabase.from('settings').select('*').eq('id', currentUser.id).maybeSingle();
       if (settingsData) {
         setSettings(keysToCamel(settingsData));
       } else {
-        await supabase.from('settings').insert(keysToSnake(INITIAL_SETTINGS));
-        setSettings(INITIAL_SETTINGS);
+        const userSettings = { ...INITIAL_SETTINGS, id: currentUser.id, name: `Arena de ${currentUser.email.split('@')[0]}` };
+        await supabase.from('settings').insert(keysToSnake(userSettings));
+        setSettings(userSettings);
       }
 
       // 6. Blocked Slots
-      const { data: blockedData } = await supabase.from('blocked_slots').select('*');
+      const { data: blockedData } = await supabase.from('blocked_slots').select('*').like('id', `${userPrefix}%`);
       if (blockedData) setBlockedSlots(keysToCamel(blockedData));
 
       // 7. Mensalistas
-      const { data: mensalistasData } = await supabase.from('mensalistas').select('*');
+      const { data: mensalistasData } = await supabase.from('mensalistas').select('*').like('id', `${userPrefix}%`);
       if (mensalistasData) setMensalistas(keysToCamel(mensalistasData));
 
       // 8. Eventos
-      const { data: eventosData } = await supabase.from('eventos').select('*');
+      const { data: eventosData } = await supabase.from('eventos').select('*').like('id', `${userPrefix}%`);
       if (eventosData) setEventos(keysToCamel(eventosData));
 
       // 9. Accounts Payable
-      const { data: payableData } = await supabase.from('accounts_payable').select('*');
+      const { data: payableData } = await supabase.from('accounts_payable').select('*').like('id', `${userPrefix}%`);
       if (payableData) setAccountsPayable(keysToCamel(payableData));
 
       // 10. Products
-      const { data: productsData } = await supabase.from('products').select('*');
+      const { data: productsData } = await supabase.from('products').select('*').like('id', `${userPrefix}%`);
       if (productsData && productsData.length > 0) {
         setProducts(keysToCamel(productsData));
       } else {
-        await supabase.from('products').insert(keysToSnake(INITIAL_PRODUCTS));
-        setProducts(INITIAL_PRODUCTS);
+        const userProducts = INITIAL_PRODUCTS.map(p => ({ ...p, id: `${userPrefix}${p.id}` }));
+        await supabase.from('products').insert(keysToSnake(userProducts));
+        setProducts(userProducts);
       }
 
       // 11. Sales
-      const { data: salesData } = await supabase.from('sales').select('*');
+      const { data: salesData } = await supabase.from('sales').select('*').like('id', `${userPrefix}%`);
       if (salesData) setSales(keysToCamel(salesData));
 
       setSyncStatus('synced');
@@ -218,20 +195,21 @@ export default function Index() {
     showSuccess("Sessão encerrada com sucesso!");
   };
 
-  // Reset All Data Handler
+  // Reset All Data Handler (Scoped by user.id)
   const handleResetAllData = async () => {
     const supabase = getSupabaseClient();
-    if (!supabase) return;
+    if (!supabase || !user) return;
 
     setSyncStatus('pending');
     try {
-      await supabase.from('bookings').delete().neq('id', '0');
-      await supabase.from('transactions').delete().neq('id', '0');
-      await supabase.from('sales').delete().neq('id', '0');
-      await supabase.from('mensalistas').delete().neq('id', '0');
-      await supabase.from('eventos').delete().neq('id', '0');
-      await supabase.from('accounts_payable').delete().neq('id', '0');
-      await supabase.from('blocked_slots').delete().neq('id', '0');
+      const userPrefix = `${user.id}_`;
+      await supabase.from('bookings').delete().like('id', `${userPrefix}%`);
+      await supabase.from('transactions').delete().like('id', `${userPrefix}%`);
+      await supabase.from('sales').delete().like('id', `${userPrefix}%`);
+      await supabase.from('mensalistas').delete().like('id', `${userPrefix}%`);
+      await supabase.from('eventos').delete().like('id', `${userPrefix}%`);
+      await supabase.from('accounts_payable').delete().like('id', `${userPrefix}%`);
+      await supabase.from('blocked_slots').delete().like('id', `${userPrefix}%`);
       
       setBookings([]);
       setTransactions([]);
@@ -241,7 +219,7 @@ export default function Index() {
       setAccountsPayable([]);
       setBlockedSlots([]);
       setSyncStatus('synced');
-      showSuccess("Todos os dados foram resetados no Supabase!");
+      showSuccess("Todos os seus dados foram resetados no Supabase!");
     } catch (err) {
       console.error(err);
       setSyncStatus('error');
@@ -251,10 +229,11 @@ export default function Index() {
   // Campos Handlers
   const handleAddField = async (newField: any) => {
     const supabase = getSupabaseClient();
+    const fieldWithUser = { ...newField, id: `${user.id}_${newField.id}` };
     if (supabase) {
-      await supabase.from('fields').insert(keysToSnake(newField));
+      await supabase.from('fields').insert(keysToSnake(fieldWithUser));
     }
-    setFields([...fields, newField]);
+    setFields([...fields, fieldWithUser]);
   };
 
   const handleDeleteField = async (id: string) => {
@@ -276,14 +255,15 @@ export default function Index() {
   // Booking Handlers
   const handleAddBooking = async (newBooking: any) => {
     const supabase = getSupabaseClient();
+    const bookingWithUser = { ...newBooking, id: `${user.id}_${newBooking.id}` };
     if (supabase) {
-      await supabase.from('bookings').insert(keysToSnake(newBooking));
+      await supabase.from('bookings').insert(keysToSnake(bookingWithUser));
     }
-    setBookings([newBooking, ...bookings]);
+    setBookings([bookingWithUser, ...bookings]);
     
     if (newBooking.paid) {
       const newTransaction = {
-        id: `booking-${newBooking.id}`,
+        id: `${user.id}_booking-${newBooking.id}`,
         description: `Aluguel ${newBooking.fieldName} - ${newBooking.customerName}`,
         amount: newBooking.price,
         type: 'income',
@@ -304,22 +284,24 @@ export default function Index() {
 
   const handleDeleteBooking = async (id: string) => {
     const supabase = getSupabaseClient();
+    const cleanId = id.replace(`${user.id}_`, '');
     if (supabase) {
       await supabase.from('bookings').delete().eq('id', id);
-      await supabase.from('transactions').delete().eq('id', `booking-${id}`);
+      await supabase.from('transactions').delete().eq('id', `${user.id}_booking-${cleanId}`);
     }
     setBookings(bookings.filter(b => b.id !== id));
-    setTransactions(transactions.filter(t => t.id !== `booking-${id}`));
+    setTransactions(transactions.filter(t => t.id !== `${user.id}_booking-${cleanId}`));
   };
 
   const handleTogglePaid = async (id: string) => {
     const supabase = getSupabaseClient();
+    const cleanId = id.replace(`${user.id}_`, '');
     const updatedBookings = bookings.map(b => {
       if (b.id === id) {
         const updatedPaid = !b.paid;
         if (updatedPaid) {
           const newTransaction = {
-            id: `booking-${b.id}`,
+            id: `${user.id}_booking-${cleanId}`,
             description: `Aluguel ${b.fieldName} - ${b.customerName}`,
             amount: b.price,
             type: 'income',
@@ -337,9 +319,9 @@ export default function Index() {
           setWhatsappMessage(msg);
         } else {
           if (supabase) {
-            supabase.from('transactions').delete().eq('id', `booking-${b.id}`).then();
+            supabase.from('transactions').delete().eq('id', `${user.id}_booking-${cleanId}`).then();
           }
-          setTransactions(prev => prev.filter(t => t.id !== `booking-${b.id}`));
+          setTransactions(prev => prev.filter(t => t.id !== `${user.id}_booking-${cleanId}`));
         }
         if (supabase) {
           supabase.from('bookings').update({ paid: updatedPaid }).eq('id', id).then();
@@ -354,10 +336,11 @@ export default function Index() {
   // Block Slot Handlers
   const handleBlockSlot = async (newBlock: any) => {
     const supabase = getSupabaseClient();
+    const blockWithUser = { ...newBlock, id: `${user.id}_${newBlock.id}` };
     if (supabase) {
-      await supabase.from('blocked_slots').insert(keysToSnake(newBlock));
+      await supabase.from('blocked_slots').insert(keysToSnake(blockWithUser));
     }
-    setBlockedSlots([...blockedSlots, newBlock]);
+    setBlockedSlots([...blockedSlots, blockWithUser]);
   };
 
   const handleUnblockSlot = async (id: string) => {
@@ -371,13 +354,14 @@ export default function Index() {
   // Mensalista Handlers
   const handleAddMensalista = async (newMensalista: any) => {
     const supabase = getSupabaseClient();
+    const mensalistaWithUser = { ...newMensalista, id: `${user.id}_${newMensalista.id}` };
     if (supabase) {
-      await supabase.from('mensalistas').insert(keysToSnake(newMensalista));
+      await supabase.from('mensalistas').insert(keysToSnake(mensalistaWithUser));
     }
-    setMensalistas([...mensalistas, newMensalista]);
+    setMensalistas([...mensalistas, mensalistaWithUser]);
     
     const newTransaction = {
-      id: `mensalista-${newMensalista.id}`,
+      id: `${user.id}_mensalista-${newMensalista.id}`,
       description: `Mensalidade: ${newMensalista.customerName}`,
       amount: newMensalista.price,
       type: 'income',
@@ -393,12 +377,13 @@ export default function Index() {
 
   const handleDeleteMensalista = async (id: string) => {
     const supabase = getSupabaseClient();
+    const cleanId = id.replace(`${user.id}_`, '');
     if (supabase) {
       await supabase.from('mensalistas').delete().eq('id', id);
-      await supabase.from('transactions').delete().eq('id', `mensalista-${id}`);
+      await supabase.from('transactions').delete().eq('id', `${user.id}_mensalista-${cleanId}`);
     }
     setMensalistas(mensalistas.filter(m => m.id !== id));
-    setTransactions(transactions.filter(t => t.id !== `mensalista-${id}`));
+    setTransactions(transactions.filter(t => t.id !== `${user.id}_mensalista-${cleanId}`));
   };
 
   const handleToggleMensalistaActive = async (id: string) => {
@@ -416,12 +401,13 @@ export default function Index() {
   // Event Handlers
   const handleAddEvento = async (newEvento: any) => {
     const supabase = getSupabaseClient();
+    const eventWithUser = { ...newEvento, id: `${user.id}_${newEvento.id}` };
     if (supabase) {
-      await supabase.from('eventos').insert(keysToSnake(newEvento));
+      await supabase.from('eventos').insert(keysToSnake(eventWithUser));
     }
-    setEventos([...eventos, newEvento]);
+    setEventos([...eventos, eventWithUser]);
     const newTransaction = {
-      id: `event-${newEvento.id}`,
+      id: `${user.id}_event-${newEvento.id}`,
       description: `Evento: ${newEvento.title}`,
       amount: newEvento.price,
       type: 'income',
@@ -437,31 +423,34 @@ export default function Index() {
 
   const handleDeleteEvento = async (id: string) => {
     const supabase = getSupabaseClient();
+    const cleanId = id.replace(`${user.id}_`, '');
     if (supabase) {
       await supabase.from('eventos').delete().eq('id', id);
-      await supabase.from('transactions').delete().eq('id', `event-${id}`);
+      await supabase.from('transactions').delete().eq('id', `${user.id}_event-${cleanId}`);
     }
     setEventos(eventos.filter(e => e.id !== id));
-    setTransactions(transactions.filter(t => t.id !== `event-${id}`));
+    setTransactions(transactions.filter(t => t.id !== `${user.id}_event-${cleanId}`));
   };
 
   // Accounts Payable Handlers
   const handleAddAccount = async (newAccount: any) => {
     const supabase = getSupabaseClient();
+    const accountWithUser = { ...newAccount, id: `${user.id}_${newAccount.id}` };
     if (supabase) {
-      await supabase.from('accounts_payable').insert(keysToSnake(newAccount));
+      await supabase.from('accounts_payable').insert(keysToSnake(accountWithUser));
     }
-    setAccountsPayable([...accountsPayable, newAccount]);
+    setAccountsPayable([...accountsPayable, accountWithUser]);
   };
 
   const handleDeleteAccount = async (id: string) => {
     const supabase = getSupabaseClient();
+    const cleanId = id.replace(`${user.id}_`, '');
     if (supabase) {
       await supabase.from('accounts_payable').delete().eq('id', id);
-      await supabase.from('transactions').delete().eq('id', `payable-${id}`);
+      await supabase.from('transactions').delete().eq('id', `${user.id}_payable-${cleanId}`);
     }
     setAccountsPayable(accountsPayable.filter(a => a.id !== id));
-    setTransactions(transactions.filter(t => t.id !== `payable-${id}`));
+    setTransactions(transactions.filter(t => t.id !== `${user.id}_payable-${cleanId}`));
   };
 
   const handleTogglePaidStatus = async (id: string) => {
@@ -469,12 +458,13 @@ export default function Index() {
     if (target) {
       const updatedStatus = target.status === 'paid' ? 'pending' : 'paid';
       const supabase = getSupabaseClient();
+      const cleanId = id.replace(`${user.id}_`, '');
       if (supabase) {
         await supabase.from('accounts_payable').update({ status: updatedStatus }).eq('id', id);
       }
       if (updatedStatus === 'paid') {
         const newTransaction = {
-          id: `payable-${target.id}`,
+          id: `${user.id}_payable-${cleanId}`,
           description: `Pagamento: ${target.description}`,
           amount: target.amount,
           type: 'expense',
@@ -488,9 +478,9 @@ export default function Index() {
         setTransactions(prev => [newTransaction, ...prev]);
       } else {
         if (supabase) {
-          await supabase.from('transactions').delete().eq('id', `payable-${target.id}`);
+          await supabase.from('transactions').delete().eq('id', `${user.id}_payable-${cleanId}`);
         }
-        setTransactions(prev => prev.filter(t => t.id !== `payable-${target.id}`));
+        setTransactions(prev => prev.filter(t => t.id !== `${user.id}_payable-${cleanId}`));
       }
       setAccountsPayable(accountsPayable.map(a => a.id === id ? { ...a, status: updatedStatus } : a));
     }
@@ -499,10 +489,11 @@ export default function Index() {
   // Estoque Handlers
   const handleAddProduct = async (newProduct: any) => {
     const supabase = getSupabaseClient();
+    const productWithUser = { ...newProduct, id: `${user.id}_${newProduct.id}` };
     if (supabase) {
-      await supabase.from('products').insert(keysToSnake(newProduct));
+      await supabase.from('products').insert(keysToSnake(productWithUser));
     }
-    setProducts([...products, newProduct]);
+    setProducts([...products, productWithUser]);
   };
 
   const handleDeleteProduct = async (id: string) => {
@@ -524,10 +515,11 @@ export default function Index() {
   // Vendas Handlers
   const handleAddSale = async (newSale: any) => {
     const supabase = getSupabaseClient();
+    const saleWithUser = { ...newSale, id: `${user.id}_${newSale.id}` };
     if (supabase) {
-      await supabase.from('sales').insert(keysToSnake(newSale));
+      await supabase.from('sales').insert(keysToSnake(saleWithUser));
     }
-    setSales([newSale, ...sales]);
+    setSales([saleWithUser, ...sales]);
     
     const updatedProducts = products.map(p => {
       if (p.id === newSale.productId) {
@@ -542,7 +534,7 @@ export default function Index() {
     setProducts(updatedProducts);
 
     const newTransaction = {
-      id: `sale-${newSale.id}`,
+      id: `${user.id}_sale-${newSale.id}`,
       description: `Venda: ${newSale.productName} (${newSale.quantity}x)`,
       amount: newSale.total,
       type: 'income',
@@ -559,6 +551,7 @@ export default function Index() {
   const handleDeleteSale = async (id: string) => {
     const sale = sales.find(s => s.id === id);
     const supabase = getSupabaseClient();
+    const cleanId = id.replace(`${user.id}_`, '');
     if (sale) {
       const updatedProducts = products.map(p => {
         if (p.id === sale.productId) {
@@ -574,19 +567,20 @@ export default function Index() {
     }
     if (supabase) {
       await supabase.from('sales').delete().eq('id', id);
-      await supabase.from('transactions').delete().eq('id', `sale-${id}`);
+      await supabase.from('transactions').delete().eq('id', `${user.id}_sale-${cleanId}`);
     }
     setSales(sales.filter(s => s.id !== id));
-    setTransactions(transactions.filter(t => t.id !== `sale-${id}`));
+    setTransactions(transactions.filter(t => t.id !== `${user.id}_sale-${cleanId}`));
   };
 
   // Settings Handlers
   const handleSaveSettings = async (updatedSettings: any) => {
     const supabase = getSupabaseClient();
+    const settingsWithUser = { ...updatedSettings, id: user.id };
     if (supabase) {
-      await supabase.from('settings').update(keysToSnake(updatedSettings)).eq('id', 'default');
+      await supabase.from('settings').update(keysToSnake(settingsWithUser)).eq('id', user.id);
     }
-    setSettings(updatedSettings);
+    setSettings(settingsWithUser);
     showSuccess("Configurações salvas com sucesso!");
   };
 
@@ -606,7 +600,7 @@ export default function Index() {
   if (!user) {
     return <Auth onAuthSuccess={(loggedInUser) => {
       setUser(loggedInUser);
-      loadAllData();
+      loadAllData(loggedInUser);
     }} />;
   }
 
