@@ -49,7 +49,7 @@ const INITIAL_SETTINGS = {
   address: "Av. das Flores, 1230 - Centro",
   phone: "(11) 98888-7777",
   openTime: "08:00",
-  closeTime: "23:00",
+  closeTime: "00:00", // Fechamento padrão à meia-noite
   pixKey: "financeiro@gestaoarenas.com",
   bankName: "Banco Cora"
 };

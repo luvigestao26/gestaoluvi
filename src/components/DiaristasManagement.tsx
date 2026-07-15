@@ -41,6 +41,29 @@ export default function DiaristasManagement({
   const [isPaid, setIsPaid] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("Pix");
 
+  // Derive unique customers from existing bookings (diaristas) and mensalistas
+  const derivedCustomers = React.useMemo(() => {
+    const list: Array<{ id: string; name: string; phone: string }> = [];
+    const seen = new Set<string>();
+
+    // From bookings (diaristas)
+    bookings.forEach(b => {
+      if (b.customerName) {
+        const key = `${b.customerName.trim().toLowerCase()}_${(b.customerPhone || '').trim()}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          list.push({
+            id: `b-${b.id}`,
+            name: b.customerName,
+            phone: b.customerPhone || ''
+          });
+        }
+      }
+    });
+
+    return list;
+  }, [bookings]);
+
   // Sync selectedFieldId when fields load asynchronously
   useEffect(() => {
     if (fields.length > 0 && !selectedFieldId) {
@@ -66,7 +89,7 @@ export default function DiaristasManagement({
   };
 
   const handleSelectExistingCustomer = (customerId: string) => {
-    const customer = customers.find(c => c.id === customerId);
+    const customer = derivedCustomers.find(c => c.id === customerId);
     if (customer) {
       setCustomerName(customer.name);
       setCustomerPhone(customer.phone);
@@ -237,7 +260,7 @@ export default function DiaristasManagement({
                     <SelectValue placeholder="Escolha um cliente existente (opcional)" />
                   </SelectTrigger>
                   <SelectContent className="bg-slate-950 border-slate-800 text-white">
-                    {customers.map(c => (
+                    {derivedCustomers.map(c => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.name} ({c.phone})
                       </SelectItem>

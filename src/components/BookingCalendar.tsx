@@ -44,7 +44,7 @@ const parseTimeToMinutes = (timeStr: string): number => {
 };
 
 const formatMinutesToTime = (mins: number): string => {
-  const hours = Math.floor(mins / 60);
+  const hours = Math.floor(mins / 60) % 24;
   const minutes = mins % 60;
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 };
@@ -88,6 +88,44 @@ export default function BookingCalendar({
   const [blockStartTime, setBlockStartTime] = useState("10:00");
   const [blockEndTime, setBlockEndTime] = useState("11:00");
   const [blockType, setBlockType] = useState<'single' | 'monthly'>('single');
+
+  // Derive unique customers from existing bookings (diaristas) and mensalistas
+  const derivedCustomers = React.useMemo(() => {
+    const list: Array<{ id: string; name: string; phone: string }> = [];
+    const seen = new Set<string>();
+
+    // From bookings (diaristas)
+    bookings.forEach(b => {
+      if (b.customerName) {
+        const key = `${b.customerName.trim().toLowerCase()}_${(b.customerPhone || '').trim()}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          list.push({
+            id: `b-${b.id}`,
+            name: b.customerName,
+            phone: b.customerPhone || ''
+          });
+        }
+      }
+    });
+
+    // From mensalistas
+    mensalistas.forEach(m => {
+      if (m.customerName) {
+        const key = `${m.customerName.trim().toLowerCase()}_${(m.customerPhone || '').trim()}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          list.push({
+            id: `m-${m.id}`,
+            name: m.customerName,
+            phone: m.customerPhone || ''
+          });
+        }
+      }
+    });
+
+    return list;
+  }, [bookings, mensalistas]);
 
   // Sync selectedFieldId when fields load asynchronously
   useEffect(() => {
@@ -163,7 +201,7 @@ export default function BookingCalendar({
   };
 
   const handleSelectExistingCustomer = (customerId: string) => {
-    const customer = customers.find(c => c.id === customerId);
+    const customer = derivedCustomers.find(c => c.id === customerId);
     if (customer) {
       setCustomerName(customer.name);
       setCustomerPhone(customer.phone);
@@ -173,10 +211,15 @@ export default function BookingCalendar({
   // Dynamic Timeline Generation Algorithm based on Arena Settings
   const generateTimeline = () => {
     const openTime = settings?.openTime || "08:00";
-    const closeTime = settings?.closeTime || "23:00";
+    let closeTime = settings?.closeTime || "00:00";
     
     const dayStart = parseTimeToMinutes(openTime);
-    const dayEnd = parseTimeToMinutes(closeTime);
+    let dayEnd = parseTimeToMinutes(closeTime);
+    
+    // If close time is midnight (00:00), treat it as 24:00 (1440 minutes)
+    if (dayEnd === 0 || closeTime === "00:00") {
+      dayEnd = 24 * 60;
+    }
 
     // Collect all busy intervals
     const busyIntervals: Array<{
@@ -191,9 +234,12 @@ export default function BookingCalendar({
     filteredBookings.forEach(b => {
       try {
         const [startStr, endStr] = b.timeSlot.split('-');
+        let startMin = parseTimeToMinutes(startStr);
+        let endMin = parseTimeToMinutes(endStr);
+        if (endMin === 0) endMin = 24 * 60;
         busyIntervals.push({
-          start: parseTimeToMinutes(startStr),
-          end: parseTimeToMinutes(endStr),
+          start: startMin,
+          end: endMin,
           type: 'booking',
           label: b.customerName,
           data: b
@@ -205,9 +251,12 @@ export default function BookingCalendar({
     activeMensalistas.forEach(m => {
       try {
         const [startStr, endStr] = m.timeSlot.split('-');
+        let startMin = parseTimeToMinutes(startStr);
+        let endMin = parseTimeToMinutes(endStr);
+        if (endMin === 0) endMin = 24 * 60;
         busyIntervals.push({
-          start: parseTimeToMinutes(startStr),
-          end: parseTimeToMinutes(endStr),
+          start: startMin,
+          end: endMin,
           type: 'mensalista',
           label: m.customerName,
           data: m
@@ -218,9 +267,12 @@ export default function BookingCalendar({
     // 3. Add Events
     activeEventos.forEach(ev => {
       try {
+        let startMin = parseTimeToMinutes(ev.startTime);
+        let endMin = parseTimeToMinutes(ev.endTime);
+        if (endMin === 0) endMin = 24 * 60;
         busyIntervals.push({
-          start: parseTimeToMinutes(ev.startTime),
-          end: parseTimeToMinutes(ev.endTime),
+          start: startMin,
+          end: endMin,
           type: 'event',
           label: ev.title,
           data: ev
@@ -232,9 +284,12 @@ export default function BookingCalendar({
     activeBlocks.forEach(block => {
       try {
         const [startStr, endStr] = block.timeSlot.split('-');
+        let startMin = parseTimeToMinutes(startStr);
+        let endMin = parseTimeToMinutes(endStr);
+        if (endMin === 0) endMin = 24 * 60;
         busyIntervals.push({
-          start: parseTimeToMinutes(startStr),
-          end: parseTimeToMinutes(endStr),
+          start: startMin,
+          end: endMin,
           type: 'block',
           label: 'Bloqueado',
           data: block
@@ -715,7 +770,7 @@ export default function BookingCalendar({
                     <SelectValue placeholder="Escolha um cliente existente (opcional)" />
                   </SelectTrigger>
                   <SelectContent className="bg-slate-950 border-slate-800 text-white">
-                    {customers.map(c => (
+                    {derivedCustomers.map(c => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.name} ({c.phone})
                       </SelectItem>
