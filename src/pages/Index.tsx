@@ -131,7 +131,13 @@ export default function Index() {
       if (settingsData) {
         setSettings(keysToCamel(settingsData));
       } else {
-        const userSettings = { ...INITIAL_SETTINGS, id: currentUser.id, name: `Arena de ${currentUser.email.split('@')[0]}` };
+        // Se não houver configurações salvas, tenta usar o nome da arena salvo nos metadados do usuário
+        const metaArenaName = currentUser.raw_user_meta_data?.arena_name;
+        const userSettings = { 
+          ...INITIAL_SETTINGS, 
+          id: currentUser.id, 
+          name: metaArenaName || `Arena de ${currentUser.email.split('@')[0]}` 
+        };
         await supabase.from('settings').insert(keysToSnake(userSettings));
         setSettings(userSettings);
       }
@@ -578,7 +584,13 @@ export default function Index() {
     const supabase = getSupabaseClient();
     const settingsWithUser = { ...updatedSettings, id: user.id };
     if (supabase) {
+      // 1. Atualiza a tabela de configurações
       await supabase.from('settings').update(keysToSnake(settingsWithUser)).eq('id', user.id);
+      
+      // 2. Atualiza os metadados do usuário no Supabase Auth para que o nome da arena apareça no painel do Supabase
+      await supabase.auth.updateUser({
+        data: { arena_name: updatedSettings.name }
+      });
     }
     setSettings(settingsWithUser);
     showSuccess("Configurações salvas com sucesso!");

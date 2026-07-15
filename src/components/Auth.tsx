@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Lock, Mail, UserPlus, LogIn, ArrowLeft, KeyRound } from 'lucide-react';
+import { Lock, Mail, UserPlus, LogIn, ArrowLeft, KeyRound, Shield } from 'lucide-react';
 import { showSuccess, showError } from "@/utils/toast";
 
 interface AuthProps {
@@ -17,6 +17,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
   const [activeTab, setActiveTab] = useState<'login' | 'register' | 'recover' | 'reset'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [arenaName, setArenaName] = useState(''); // Novo campo para o nome da arena
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -55,10 +56,19 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
     setLoading(true);
     try {
       if (activeTab === 'register') {
-        // Realiza o cadastro simples com e-mail e senha
+        if (!arenaName.trim()) {
+          throw new Error("Por favor, informe o nome da sua Arena.");
+        }
+
+        // Realiza o cadastro simples com e-mail, senha e metadados da arena
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            data: {
+              arena_name: arenaName.trim() // Salva o nome da arena nos metadados do usuário
+            }
+          }
         });
         if (signUpError) throw signUpError;
         
@@ -179,6 +189,24 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
 
           <CardContent className="space-y-4">
             <form onSubmit={handleAuth} className="space-y-4">
+              {activeTab === 'register' && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="arenaName" className="text-slate-300 font-semibold">Nome da Arena *</Label>
+                  <div className="relative">
+                    <Shield className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                    <Input
+                      id="arenaName"
+                      type="text"
+                      placeholder="Ex: Arena das Palmeiras"
+                      value={arenaName}
+                      onChange={(e) => setArenaName(e.target.value)}
+                      className="pl-10 rounded-xl border-slate-800 bg-slate-950 text-white focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
               {activeTab !== 'reset' && (
                 <div className="space-y-1.5">
                   <Label htmlFor="email" className="text-slate-300 font-semibold">E-mail</Label>
