@@ -42,22 +42,16 @@ export default function DashboardOverview({
   const todayStr = new Date().toISOString().split('T')[0];
   const [resetStep, setResetStep] = useState(0); // 0 = idle, 1 = first confirm, 2 = second confirm
 
-  // 1. Faturamento Campo (Total bookings revenue)
-  const totalCampoRevenue = bookings.reduce((sum, b) => sum + b.price, 0);
-
-  // 2. Faturamento Cantina (Total transactions from Bar/Lanchonete category)
-  const totalCantinaRevenue = transactions
-    .filter(t => t.category === 'Bar / Lanchonete' && t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  // 3. Faturamento Diário (Today's bookings + Today's sales)
+  // 1. Faturamento Campo Diário (Today's bookings revenue)
   const todayBookings = bookings.filter(b => b.date === todayStr);
   const todayBookingsRevenue = todayBookings.reduce((sum, b) => sum + b.price, 0);
-  
+
+  // 2. Faturamento Cantina Diário (Today's transactions from Bar/Lanchonete category)
   const todayCantinaRevenue = transactions
     .filter(t => t.date === todayStr && t.category === 'Bar / Lanchonete' && t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
 
+  // 3. Faturamento Diário Total (Today's bookings + Today's sales)
   const todayTotalRevenue = todayBookingsRevenue + todayCantinaRevenue;
 
   // 4. Lucro Líquido Diário (Today's Daily Revenue - Today's Expenses - Today's Cost of Goods Sold)
@@ -197,31 +191,31 @@ export default function DashboardOverview({
           </CardContent>
         </Card>
 
-        {/* Faturamento Campo */}
+        {/* Faturamento Campo Diário */}
         <Card className="border-slate-800 shadow-md bg-slate-900 text-white hover:border-slate-700 transition-all">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Faturamento Campo</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-400">Faturamento Campo (Hoje)</CardTitle>
             <div className="rounded-full bg-blue-950 p-2 text-blue-400 border border-blue-900">
               <Calendar className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">R$ {totalCampoRevenue.toFixed(2)}</div>
-            <p className="text-xs text-slate-400 mt-1">Total acumulado de reservas</p>
+            <div className="text-2xl font-bold text-white">R$ {todayBookingsRevenue.toFixed(2)}</div>
+            <p className="text-xs text-slate-400 mt-1">Reservas de hoje</p>
           </CardContent>
         </Card>
 
-        {/* Faturamento Cantina */}
+        {/* Faturamento Cantina Diário */}
         <Card className="border-slate-800 shadow-md bg-slate-900 text-white hover:border-slate-700 transition-all">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Faturamento Cantina</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-400">Faturamento Cantina (Hoje)</CardTitle>
             <div className="rounded-full bg-blue-950 p-2 text-blue-400 border border-blue-900">
               <Utensils className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">R$ {totalCantinaRevenue.toFixed(2)}</div>
-            <p className="text-xs text-slate-400 mt-1">Total acumulado de vendas</p>
+            <div className="text-2xl font-bold text-white">R$ {todayCantinaRevenue.toFixed(2)}</div>
+            <p className="text-xs text-slate-400 mt-1">Vendas de hoje</p>
           </CardContent>
         </Card>
 
