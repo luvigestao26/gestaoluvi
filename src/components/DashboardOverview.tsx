@@ -60,23 +60,24 @@ export default function DashboardOverview({
 
   const todayTotalRevenue = todayBookingsRevenue + todayCantinaRevenue;
 
-  // 4. Lucro Líquido (Total Income - Total Expenses - Cost of Goods Sold)
-  const totalIncome = transactions
-    .filter(t => t.type === 'income')
+  // 4. Lucro Líquido Diário (Today's Income - Today's Expenses - Today's Cost of Goods Sold)
+  const todayIncome = transactions
+    .filter(t => t.date === todayStr && t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const totalExpense = transactions
-    .filter(t => t.type === 'expense')
+  const todayExpense = transactions
+    .filter(t => t.date === todayStr && t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  // Calculate Cost of Goods Sold (COGS) dynamically
-  const cogs = sales.reduce((sum, sale) => {
+  // Calculate Cost of Goods Sold (COGS) dynamically for today
+  const todaySales = sales.filter(s => s.date === todayStr);
+  const todayCogs = todaySales.reduce((sum, sale) => {
     const product = products.find(p => p.id === sale.productId);
     const cost = product ? product.costPrice : 0;
     return sum + (cost * sale.quantity);
   }, 0);
 
-  const netProfit = totalIncome - totalExpense - cogs;
+  const dailyNetProfit = todayIncome - todayExpense - todayCogs;
 
   // Filter bookings for today
   const todayBookingsList = bookings.filter(b => b.date === todayStr);
@@ -132,7 +133,7 @@ export default function DashboardOverview({
             Painel de Controle
           </span>
           <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
-            Gestão Arenas ⚽🎾
+            Gestão Arenas ⚽
           </h1>
           <div className="mt-6 flex flex-wrap gap-3">
             <button 
@@ -227,19 +228,19 @@ export default function DashboardOverview({
           </CardContent>
         </Card>
 
-        {/* Lucro Líquido */}
+        {/* Lucro Líquido Diário */}
         <Card className="border-slate-800 shadow-md bg-slate-900 text-white hover:border-slate-700 transition-all">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Lucro Líquido</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-400">Lucro Líquido Diário</CardTitle>
             <div className="rounded-full bg-blue-950 p-2 text-blue-400 border border-blue-900">
               <TrendingUp className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-              R$ {netProfit.toFixed(2)}
+            <div className={`text-2xl font-bold ${dailyNetProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              R$ {dailyNetProfit.toFixed(2)}
             </div>
-            <p className="text-xs text-slate-400 mt-1">Saldo líquido total atual</p>
+            <p className="text-xs text-slate-400 mt-1">Saldo líquido de hoje</p>
           </CardContent>
         </Card>
       </div>
