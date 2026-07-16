@@ -157,8 +157,11 @@ export default function BookingCalendar({
       return false;
     }
 
+    // Decode recurrence
+    const recType = m.recurrence?.split('_due_')[0] || m.recurrence;
+
     // Recurrence logic
-    if (m.recurrence === 'biweekly') {
+    if (recType === 'biweekly') {
       const dateObj = new Date(selectedDate + 'T00:00:00');
       const oneJan = new Date(dateObj.getFullYear(), 0, 1);
       const numberOfDays = Math.floor((dateObj.getTime() - oneJan.getTime()) / (24 * 60 * 60 * 1000));
@@ -166,7 +169,7 @@ export default function BookingCalendar({
       return weekNumber % 2 === 0;
     }
 
-    if (m.recurrence === 'monthly_3x') {
+    if (recType === 'monthly_3x') {
       const dayOfMonth = new Date(selectedDate + 'T00:00:00').getDate();
       return dayOfMonth <= 21;
     }

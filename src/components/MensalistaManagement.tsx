@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, User, Calendar, Clock, DollarSign, Check, X, ShieldCheck } from 'lucide-react';
+import { Plus, Trash2, User, Calendar, Clock, DollarSign, Check, X, ShieldCheck, CalendarDays } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ export default function MensalistaManagement({
   const [endTime, setEndTime] = useState("19:30");
   const [price, setPrice] = useState("");
   const [recurrence, setRecurrence] = useState("weekly"); // weekly, biweekly, monthly_3x, custom
+  const [dueDay, setDueDay] = useState("10"); // Dia de vencimento padrão: 10
   const [paymentMethod, setPaymentMethod] = useState("Pix");
 
   // Group mensalistas in the UI to show a single card per customer/schedule group
@@ -117,6 +118,9 @@ export default function MensalistaManagement({
     const selectedField = fields.find(f => f.id === fieldId);
     const customTimeSlot = `${startTime} - ${endTime}`;
 
+    // Encode dueDay inside recurrence field to avoid database schema mismatch
+    const encodedRecurrence = `${recurrence}_due_${dueDay}`;
+
     // Cadastra um registro de mensalista para cada dia selecionado
     selectedDays.forEach((day, index) => {
       const newMensalista = {
@@ -130,7 +134,7 @@ export default function MensalistaManagement({
         timeSlot: customTimeSlot,
         price: parseFloat(price),
         active: true,
-        recurrence,
+        recurrence: encodedRecurrence,
         paymentMethod
       };
       onAddMensalista(newMensalista);
@@ -144,6 +148,7 @@ export default function MensalistaManagement({
     setStartTime("18:00");
     setEndTime("19:30");
     setPrice("");
+    setDueDay("10");
     setSelectedDays([1]);
     setIsOpen(false);
   };
@@ -165,87 +170,97 @@ export default function MensalistaManagement({
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {groupedMensalistas.map((m) => (
-          <Card key={m.id} className="border-slate-800 shadow-md bg-slate-900 text-white overflow-hidden hover:border-slate-700 transition-all">
-            <div className="h-2 bg-blue-500" />
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-2.5">
-                  <div className="rounded-full bg-blue-950 border border-blue-900 p-2 text-blue-400">
-                    <User size={18} />
+        {groupedMensalistas.map((m) => {
+          // Decode recurrence and dueDay
+          const [recType, decodedDueDay] = (m.recurrence || 'weekly').split('_due_');
+          
+          return (
+            <Card key={m.id} className="border-slate-800 shadow-md bg-slate-900 text-white overflow-hidden hover:border-slate-700 transition-all">
+              <div className="h-2 bg-blue-500" />
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-2.5">
+                    <div className="rounded-full bg-blue-950 border border-blue-900 p-2 text-blue-400">
+                      <User size={18} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base font-bold text-white">{m.customerName}</CardTitle>
+                      <CardDescription className="text-slate-400">{m.customerPhone || "Sem telefone"}</CardDescription>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-base font-bold text-white">{m.customerName}</CardTitle>
-                    <CardDescription className="text-slate-400">{m.customerPhone || "Sem telefone"}</CardDescription>
+                  <button
+                    onClick={() => {
+                      m.ids.forEach((id: string) => onToggleActive(id));
+                      showSuccess("Status de atividade updated!");
+                    }}
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      m.active ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {m.active ? 'Ativo' : 'Inativo'}
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-slate-300">
+                <div className="flex items-start gap-2">
+                  <Calendar size={14} className="text-slate-400 mt-0.5 shrink-0" />
+                  <div className="flex flex-wrap gap-1">
+                    {m.daysOfWeek.map((dayNum: number) => (
+                      <span key={dayNum} className="inline-block bg-slate-800 border border-slate-700 text-slate-200 text-xs px-2 py-0.5 rounded-lg font-semibold">
+                        {DAYS_OF_WEEK.find(d => d.value === dayNum)?.short}
+                      </span>
+                    ))}
                   </div>
                 </div>
-                <button
-                  onClick={() => {
-                    m.ids.forEach((id: string) => onToggleActive(id));
-                    showSuccess("Status de atividade atualizado!");
-                  }}
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                    m.active ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' : 'bg-slate-800 text-slate-400'
-                  }`}
-                >
-                  {m.active ? 'Ativo' : 'Inativo'}
-                </button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-slate-300">
-              <div className="flex items-start gap-2">
-                <Calendar size={14} className="text-slate-400 mt-0.5 shrink-0" />
-                <div className="flex flex-wrap gap-1">
-                  {m.daysOfWeek.map((dayNum: number) => (
-                    <span key={dayNum} className="inline-block bg-slate-800 border border-slate-700 text-slate-200 text-xs px-2 py-0.5 rounded-lg font-semibold">
-                      {DAYS_OF_WEEK.find(d => d.value === dayNum)?.short}
-                    </span>
-                  ))}
+                <div className="flex items-center gap-2">
+                  <Clock size={14} className="text-slate-400" />
+                  <span>{m.timeSlot}</span>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock size={14} className="text-slate-400" />
-                <span>{m.timeSlot}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <ShieldCheck size={14} className="text-slate-400" />
-                <span>{m.fieldName} ({m.sport})</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">Recorrência:</span>
-                <span className="text-xs font-semibold text-blue-400">
-                  {m.recurrence === 'weekly' ? 'Toda semana' : 
-                   m.recurrence === 'biweekly' ? 'De 15 em 15 dias' : 
-                   m.recurrence === 'monthly_3x' ? '3 vezes no mês' : 'Personalizado'}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">Pagamento:</span>
-                <span className="text-xs font-semibold text-emerald-400">{m.paymentMethod || 'Pix'}</span>
-              </div>
-              <div className="flex items-center justify-between p-2.5 bg-slate-950 border border-slate-800 rounded-xl mt-2">
-                <span className="text-xs text-slate-400">Mensalidade (por dia)</span>
-                <span className="font-bold text-white">R$ {m.price.toFixed(2)}</span>
-              </div>
+                <div className="flex items-center gap-2">
+                  <ShieldCheck size={14} className="text-slate-400" />
+                  <span>{m.fieldName} ({m.sport})</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400">Recorrência:</span>
+                  <span className="text-xs font-semibold text-blue-400">
+                    {recType === 'weekly' ? 'Toda semana' : 
+                     recType === 'biweekly' ? 'De 15 em 15 dias' : 
+                     recType === 'monthly_3x' ? '3 vezes no mês' : 'Personalizado'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CalendarDays size={14} className="text-slate-400" />
+                  <span className="text-xs text-slate-400">Vencimento:</span>
+                  <span className="text-xs font-bold text-amber-400">Todo dia {decodedDueDay || '10'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400">Pagamento:</span>
+                  <span className="text-xs font-semibold text-emerald-400">{m.paymentMethod || 'Pix'}</span>
+                </div>
+                <div className="flex items-center justify-between p-2.5 bg-slate-950 border border-slate-800 rounded-xl mt-2">
+                  <span className="text-xs text-slate-400">Mensalidade (por dia)</span>
+                  <span className="font-bold text-white">R$ {m.price.toFixed(2)}</span>
+                </div>
 
-              <div className="flex gap-2 pt-2 border-t border-slate-800">
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    if (confirm(`Deseja realmente excluir o mensalista "${m.customerName}" de todos os dias selecionados?`)) {
-                      m.ids.forEach((id: string) => onDeleteMensalista(id));
-                      showSuccess("Mensalista excluído com sucesso!");
-                    }
-                  }}
-                  className="w-full rounded-xl text-red-400 hover:text-red-300 hover:bg-red-950/30 flex items-center justify-center gap-1.5 font-bold"
-                >
-                  <Trash2 size={14} />
-                  Excluir Mensalista
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                <div className="flex gap-2 pt-2 border-t border-slate-800">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      if (confirm(`Deseja realmente excluir o mensalista "${m.customerName}" de todos os dias selecionados?`)) {
+                        m.ids.forEach((id: string) => onDeleteMensalista(id));
+                        showSuccess("Mensalista excluído com sucesso!");
+                      }
+                    }}
+                    className="w-full rounded-xl text-red-400 hover:text-red-300 hover:bg-red-950/30 flex items-center justify-center gap-1.5 font-bold"
+                  >
+                    <Trash2 size={14} />
+                    Excluir Mensalista
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
 
         {groupedMensalistas.length === 0 && (
           <div className="col-span-full text-center py-12 bg-slate-900 border border-slate-800 rounded-2xl shadow-sm">
@@ -392,6 +407,22 @@ export default function MensalistaManagement({
                 </div>
 
                 <div className="space-y-1">
+                  <Label className="text-slate-300 font-semibold">Dia de Vencimento *</Label>
+                  <Select value={dueDay} onValueChange={setDueDay}>
+                    <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-950 border-slate-800 text-white max-h-48 overflow-y-auto">
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                        <SelectItem key={day} value={day.toString()}>Todo dia {day}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
                   <Label className="text-slate-300 font-semibold">Forma de Pagamento</Label>
                   <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                     <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
@@ -405,19 +436,19 @@ export default function MensalistaManagement({
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="mPrice" className="text-slate-300 font-semibold">Valor Mensal (R$ por dia selecionado) *</Label>
-                <Input
-                  id="mPrice"
-                  type="number"
-                  placeholder="Ex: 400.00"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  className="rounded-xl border-slate-800 bg-slate-950 text-white"
-                  required
-                />
+                <div className="space-y-1">
+                  <Label htmlFor="mPrice" className="text-slate-300 font-semibold">Valor Mensal (R$ por dia) *</Label>
+                  <Input
+                    id="mPrice"
+                    type="number"
+                    placeholder="Ex: 400.00"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    className="rounded-xl border-slate-800 bg-slate-950 text-white"
+                    required
+                  />
+                </div>
               </div>
 
               <div className="pt-4 flex gap-3 shrink-0">
