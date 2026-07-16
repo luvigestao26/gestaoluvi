@@ -88,6 +88,10 @@ export default function EventManagement({ eventos, fields, onAddEvento, onDelete
 
     const selectedField = fields.find(f => f.id === fieldId);
 
+    // Divide o valor total igualmente entre as datas selecionadas
+    const totalPrice = parseFloat(price);
+    const pricePerDate = totalPrice / dates.length;
+
     // Cadastra um registro de evento para cada data selecionada
     dates.forEach((d, index) => {
       const newEvento = {
@@ -97,7 +101,7 @@ export default function EventManagement({ eventos, fields, onAddEvento, onDelete
         date: d,
         startTime,
         endTime,
-        price: parseFloat(price),
+        price: pricePerDate,
         fieldId,
         fieldName: selectedField ? selectedField.name : "Quadra",
         recurrence,
@@ -177,8 +181,8 @@ export default function EventManagement({ eventos, fields, onAddEvento, onDelete
                 <span className="text-xs font-semibold text-emerald-400">{ev.paymentMethod || 'Pix'}</span>
               </div>
               <div className="flex items-center justify-between p-2.5 bg-slate-950 border border-slate-800 rounded-xl mt-2">
-                <span className="text-xs text-slate-400">Custo / Arrecadação (por dia)</span>
-                <span className="font-bold text-white">R$ {ev.price.toFixed(2)}</span>
+                <span className="text-xs text-slate-400">Custo / Arrecadação Total</span>
+                <span className="font-bold text-white">R$ {(ev.price * ev.dates.length).toFixed(2)}</span>
               </div>
 
               <div className="flex gap-2 pt-2 border-t border-slate-800">
@@ -343,11 +347,11 @@ export default function EventManagement({ eventos, fields, onAddEvento, onDelete
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label htmlFor="evPrice" className="text-slate-300 font-semibold">Valor / Custo (R$) *</Label>
+                  <Label htmlFor="evPrice" className="text-slate-300 font-semibold">Valor Total do Evento (R$) *</Label>
                   <Input
                     id="evPrice"
                     type="number"
-                    placeholder="Ex: 500.00"
+                    placeholder="Ex: 1000.00"
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
                     className="rounded-xl border-slate-800 bg-slate-950 text-white"

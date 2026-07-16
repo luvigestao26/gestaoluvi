@@ -121,6 +121,10 @@ export default function MensalistaManagement({
     // Encode dueDay inside recurrence field to avoid database schema mismatch
     const encodedRecurrence = `${recurrence}_due_${dueDay}`;
 
+    // Divide o valor mensal total igualmente entre os dias selecionados
+    const totalPrice = parseFloat(price);
+    const pricePerDay = totalPrice / selectedDays.length;
+
     // Cadastra um registro de mensalista para cada dia selecionado
     selectedDays.forEach((day, index) => {
       const newMensalista = {
@@ -132,7 +136,7 @@ export default function MensalistaManagement({
         sport,
         dayOfWeek: day,
         timeSlot: customTimeSlot,
-        price: parseFloat(price),
+        price: pricePerDay,
         active: true,
         recurrence: encodedRecurrence,
         paymentMethod
@@ -191,7 +195,7 @@ export default function MensalistaManagement({
                   <button
                     onClick={() => {
                       m.ids.forEach((id: string) => onToggleActive(id));
-                      showSuccess("Status de atividade updated!");
+                      showSuccess("Status de atividade atualizado!");
                     }}
                     className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                       m.active ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' : 'bg-slate-800 text-slate-400'
@@ -238,8 +242,8 @@ export default function MensalistaManagement({
                   <span className="text-xs font-semibold text-emerald-400">{m.paymentMethod || 'Pix'}</span>
                 </div>
                 <div className="flex items-center justify-between p-2.5 bg-slate-950 border border-slate-800 rounded-xl mt-2">
-                  <span className="text-xs text-slate-400">Mensalidade (por dia)</span>
-                  <span className="font-bold text-white">R$ {m.price.toFixed(2)}</span>
+                  <span className="text-xs text-slate-400">Mensalidade Total</span>
+                  <span className="font-bold text-white">R$ {(m.price * m.daysOfWeek.length).toFixed(2)}</span>
                 </div>
 
                 <div className="flex gap-2 pt-2 border-t border-slate-800">
@@ -438,11 +442,11 @@ export default function MensalistaManagement({
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="mPrice" className="text-slate-300 font-semibold">Valor Mensal (R$ por dia) *</Label>
+                  <Label htmlFor="mPrice" className="text-slate-300 font-semibold">Valor Mensal Total (R$) *</Label>
                   <Input
                     id="mPrice"
                     type="number"
-                    placeholder="Ex: 400.00"
+                    placeholder="Ex: 1000.00"
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
                     className="rounded-xl border-slate-800 bg-slate-950 text-white"

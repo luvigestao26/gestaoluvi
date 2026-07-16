@@ -60,11 +60,7 @@ export default function DashboardOverview({
 
   const todayTotalRevenue = todayBookingsRevenue + todayCantinaRevenue;
 
-  // 4. Lucro Líquido Diário (Today's Income - Today's Expenses - Today's Cost of Goods Sold)
-  const todayIncome = transactions
-    .filter(t => t.date === todayStr && t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
-
+  // 4. Lucro Líquido Diário (Today's Daily Revenue - Today's Expenses - Today's Cost of Goods Sold)
   const todayExpense = transactions
     .filter(t => t.date === todayStr && t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
@@ -77,7 +73,8 @@ export default function DashboardOverview({
     return sum + (cost * sale.quantity);
   }, 0);
 
-  const dailyNetProfit = todayIncome - todayExpense - todayCogs;
+  // Lucro diário baseado estritamente no faturamento diário operacional de hoje
+  const dailyNetProfit = todayTotalRevenue - todayExpense - todayCogs;
 
   // Filter bookings for today
   const todayBookingsList = bookings.filter(b => b.date === todayStr);
