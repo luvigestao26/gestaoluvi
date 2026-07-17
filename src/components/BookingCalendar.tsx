@@ -477,7 +477,7 @@ export default function BookingCalendar({
           <Button 
             onClick={() => setIsBlockModalOpen(true)}
             variant="outline"
-            className="border-rose-900 text-rose-400 hover:bg-rose-950/30 rounded-xl px-4 py-2.5 flex items-center gap-2 text-xs sm:text-sm"
+            className="border-rose-900 text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 rounded-xl px-4 py-2.5 flex items-center gap-2 text-xs sm:text-sm"
           >
             <Lock size={16} />
             Bloquear Horário
@@ -697,7 +697,7 @@ export default function BookingCalendar({
                   type="button"
                   variant="outline"
                   onClick={() => setIsBlockModalOpen(false)}
-                  className="flex-1 rounded-xl border-slate-800 bg-slate-950 text-white"
+                  className="flex-1 rounded-xl border border-slate-700 bg-slate-950 text-white hover:bg-slate-800 hover:text-white"
                 >
                   Cancelar
                 </Button>
@@ -741,7 +741,7 @@ export default function BookingCalendar({
                     className={`py-2.5 rounded-xl font-bold text-xs sm:text-sm border transition-all flex items-center justify-center gap-1.5 ${
                       bookingType === 'diarista'
                         ? 'bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-600/20'
-                        : 'border-slate-800 text-slate-400 hover:bg-slate-850'
+                        : 'border-slate-800 text-slate-200 hover:text-white hover:bg-slate-850'
                     }`}
                   >
                     <Users size={16} />
@@ -753,7 +753,7 @@ export default function BookingCalendar({
                     className={`py-2.5 rounded-xl font-bold text-xs sm:text-sm border transition-all flex items-center justify-center gap-1.5 ${
                       bookingType === 'mensalista'
                         ? 'bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-600/20'
-                        : 'border-slate-800 text-slate-400 hover:bg-slate-850'
+                        : 'border-slate-800 text-slate-200 hover:text-white hover:bg-slate-850'
                     }`}
                   >
                     <UserCheck size={16} />
@@ -948,7 +948,7 @@ export default function BookingCalendar({
                   type="button"
                   variant="outline"
                   onClick={() => setIsNewBookingOpen(false)}
-                  className="flex-1 rounded-xl border-slate-800 bg-slate-950 text-white"
+                  className="flex-1 rounded-xl border border-slate-700 bg-slate-950 text-white hover:bg-slate-800 hover:text-white"
                 >
                   Cancelar
                 </Button>
