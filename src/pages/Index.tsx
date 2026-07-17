@@ -20,6 +20,7 @@ import { MadeWithDyad } from "@/components/made-with-dyad";
 import { Menu, Cloud, CloudLightning, CloudOff } from 'lucide-react';
 import { showSuccess, showError } from "@/utils/toast";
 import { keysToCamel, keysToSnake } from '@/lib/utils';
+import { getBrasiliaDate } from '@/utils/date';
 
 // Mock initial data
 const INITIAL_FIELDS = [
@@ -372,7 +373,7 @@ export default function Index() {
       amount: newMensalista.price,
       type: 'income',
       category: 'Aluguel de Quadra',
-      date: new Date().toISOString().split('T')[0],
+      date: getBrasiliaDate(),
       paymentMethod: newMensalista.paymentMethod || 'Pix'
     };
     if (supabase) {
@@ -475,7 +476,7 @@ export default function Index() {
           amount: target.amount,
           type: 'expense',
           category: target.category,
-          date: new Date().toISOString().split('T')[0],
+          date: getBrasiliaDate(),
           paymentMethod: 'Pix'
         };
         if (supabase) {

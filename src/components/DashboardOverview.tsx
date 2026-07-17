@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
   Calendar, 
@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { showSuccess } from "@/utils/toast";
+import { getBrasiliaDate, getBrasiliaDateTime, formatBrasiliaDateTimeString } from "@/utils/date";
 
 interface DashboardOverviewProps {
   bookings: any[];
@@ -39,8 +40,18 @@ export default function DashboardOverview({
   onNavigate,
   onResetAllData 
 }: DashboardOverviewProps) {
-  const todayStr = new Date().toISOString().split('T')[0];
+  const [currentDateTimeStr, setCurrentDateTimeStr] = useState(formatBrasiliaDateTimeString());
   const [resetStep, setResetStep] = useState(0); // 0 = idle, 1 = first confirm, 2 = second confirm
+
+  // Atualiza o relógio de Brasília a cada minuto
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentDateTimeStr(formatBrasiliaDateTimeString());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const todayStr = getBrasiliaDate();
 
   // 1. Faturamento Campo Diário (Today's bookings revenue)
   const todayBookings = bookings.filter(b => b.date === todayStr);
@@ -77,9 +88,14 @@ export default function DashboardOverview({
   const getChartData = () => {
     const data = [];
     for (let i = 6; i >= 0; i--) {
-      const d = new Date();
+      const d = getBrasiliaDateTime();
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
+      
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      
       const label = d.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric' });
       
       const dayIncome = transactions
@@ -126,6 +142,10 @@ export default function DashboardOverview({
           <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
             Gestão Arenas ⚽
           </h1>
+          <p className="text-sm text-slate-400 mt-2 flex items-center gap-1.5">
+            <Clock size={16} className="text-blue-400" />
+            Horário de Brasília: <span className="text-white font-semibold">{currentDateTimeStr}</span>
+          </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <button 
               onClick={() => onNavigate('calendar')}
@@ -291,7 +311,7 @@ export default function DashboardOverview({
                   <div>
                     <p className="text-sm font-semibold text-white">{booking.customerName}</p>
                     <p className="text-xs text-slate-400">
-                      {booking.fieldName} • {booking.date} às {booking.timeSlot}
+                      {booking.fieldName} • {booking.date.split('-').reverse().join('/')} às {booking.timeSlot}
                     </p>
                   </div>
                 </div>
