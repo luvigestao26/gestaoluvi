@@ -43,14 +43,11 @@ export default function Sidebar({ activeTab, onTabChange, userEmail, onLogout }:
     <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col h-screen sticky top-0 border-r border-slate-800">
       {/* Logo */}
       <div className="p-6 border-b border-slate-800 flex flex-col items-center justify-center gap-2 bg-slate-900">
-        <div className="relative w-full h-20 flex items-center justify-center bg-slate-900 rounded-2xl p-2 border border-slate-800/40">
+        <div className="relative w-20 h-20 flex items-center justify-center bg-white rounded-2xl p-1.5 border border-slate-800/40 shadow-inner">
           <img 
             src="/logo.png" 
             alt="Logo Gestão Arenas L.I" 
-            className="w-full h-full object-contain object-center"
-            style={{
-              filter: 'drop-shadow(1px 0px 0px #ffffff) drop-shadow(-1px 0px 0px #ffffff) drop-shadow(0px 1px 0px #ffffff) drop-shadow(0px -1px 0px #ffffff)'
-            }}
+            className="w-full h-full object-contain object-center rounded-xl"
           />
         </div>
         <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider mt-1">Painel Administrativo</span>
