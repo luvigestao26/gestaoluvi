@@ -42,16 +42,17 @@ export default function Sidebar({ activeTab, onTabChange, userEmail, onLogout }:
   return (
     <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col h-screen sticky top-0 border-r border-slate-800">
       {/* Logo */}
-      <div className="p-5 border-b border-slate-800 flex flex-col gap-3">
-        <div className="relative w-full h-16 rounded-xl overflow-hidden border border-slate-700 bg-white flex items-center justify-center shrink-0 shadow-md p-1">
+      <div className="p-6 border-b border-slate-800 flex items-center gap-4">
+        <div className="relative w-14 h-14 flex items-center justify-center shrink-0">
           <img 
-            src="/logo.png" 
-            alt="Logo Gestão Arenas L.I" 
-            className="w-full h-full object-contain object-center"
+            src="/favicon.png" 
+            alt="Brasão Gestão Arenas L.I" 
+            className="w-full h-full object-contain object-center drop-shadow-[0_0_8px_rgba(59,130,246,0.5)] scale-110"
           />
         </div>
-        <div className="flex items-center justify-between px-1">
-          <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">Painel Administrativo</span>
+        <div>
+          <h1 className="font-extrabold text-white text-base leading-tight tracking-tight">Arenas L.I</h1>
+          <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">Painel Admin</span>
         </div>
       </div>
 

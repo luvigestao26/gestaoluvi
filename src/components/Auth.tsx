@@ -123,11 +123,11 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
       <div className="w-full max-w-md space-y-6">
         {/* Logo / Header */}
         <div className="text-center space-y-3">
-          <div className="relative w-full h-28 mx-auto rounded-3xl overflow-hidden border border-slate-800 shadow-lg shadow-blue-600/10 bg-white flex items-center justify-center p-2">
+          <div className="relative w-28 h-28 mx-auto flex items-center justify-center">
             <img 
-              src="/logo.png" 
-              alt="Logo Gestão Arenas L.I" 
-              className="w-full h-full object-contain object-center"
+              src="/favicon.png" 
+              alt="Brasão Gestão Arenas L.I" 
+              className="w-full h-full object-contain object-center drop-shadow-[0_0_15px_rgba(59,130,246,0.6)] scale-110"
             />
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-white">Gestão Arenas L.I</h1>
