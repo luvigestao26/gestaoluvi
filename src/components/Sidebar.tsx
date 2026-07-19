@@ -42,18 +42,18 @@ export default function Sidebar({ activeTab, onTabChange, userEmail, onLogout }:
   return (
     <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col h-screen sticky top-0 border-r border-slate-800">
       {/* Logo */}
-      <div className="p-6 border-b border-slate-800 flex items-center gap-4">
-        <div className="relative w-14 h-14 flex items-center justify-center shrink-0">
+      <div className="p-6 border-b border-slate-800 flex flex-col items-center justify-center gap-2">
+        <div className="relative w-full h-20 flex items-center justify-center">
           <img 
-            src="/favicon.png" 
-            alt="Brasão Gestão Arenas L.I" 
-            className="w-full h-full object-contain object-center drop-shadow-[0_0_8px_rgba(59,130,246,0.5)] scale-110"
+            src="/logo.png" 
+            alt="Logo Gestão Arenas L.I" 
+            className="w-full h-full object-contain object-center"
+            style={{
+              filter: 'drop-shadow(1px 0px 0px rgba(255,255,255,0.8)) drop-shadow(-1px 0px 0px rgba(255,255,255,0.8)) drop-shadow(0px 1px 0px rgba(255,255,255,0.8)) drop-shadow(0px -1px 0px rgba(255,255,255,0.8))'
+            }}
           />
         </div>
-        <div>
-          <h1 className="font-extrabold text-white text-base leading-tight tracking-tight">Arenas L.I</h1>
-          <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">Painel Admin</span>
-        </div>
+        <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider mt-1">Painel Administrativo</span>
       </div>
 
       {/* Navigation */}
