@@ -37,7 +37,7 @@ const INITIAL_CUSTOMERS = [
 
 const INITIAL_SETTINGS = {
   id: 'default',
-  name: "Gestão Arenas",
+  name: "Gestão Arenas L.I",
   address: "Av. das Flores, 1230 - Centro",
   phone: "(11) 98888-7777",
   openTime: "08:00",

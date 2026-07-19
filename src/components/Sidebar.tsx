@@ -47,7 +47,7 @@ export default function Sidebar({ activeTab, onTabChange, userEmail, onLogout }:
           GA
         </div>
         <div>
-          <h1 className="font-bold text-white text-lg leading-none">Gestão Arenas</h1>
+          <h1 className="font-bold text-white text-lg leading-none">Gestão Arenas L.I</h1>
           <span className="text-xs text-blue-400 font-medium">Painel Administrativo</span>
         </div>
       </div>

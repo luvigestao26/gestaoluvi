@@ -140,7 +140,7 @@ export default function DashboardOverview({
             Painel de Controle
           </span>
           <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
-            Gestão Arenas ⚽
+            Gestão Arenas L.I ⚽
           </h1>
           <p className="text-sm text-slate-400 mt-2 flex items-center gap-1.5">
             <Clock size={16} className="text-blue-400" />

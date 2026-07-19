@@ -125,7 +125,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
           <div className="inline-flex rounded-2xl bg-blue-600 p-3.5 text-white font-bold text-2xl shadow-lg shadow-blue-600/30">
             GA
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white">Gestão Arenas</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight text-white">Gestão Arenas L.I</h1>
           <p className="text-sm text-slate-400">Seu painel completo de controle e agendamentos esportivos</p>
         </div>
 
