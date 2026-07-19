@@ -123,13 +123,13 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
       <div className="w-full max-w-md space-y-6">
         {/* Logo / Header */}
         <div className="text-center space-y-3">
-          <div className="relative w-full h-28 mx-auto flex items-center justify-center">
+          <div className="relative w-full h-28 mx-auto flex items-center justify-center bg-slate-950 rounded-3xl p-3 border border-slate-800/40">
             <img 
               src="/logo.png" 
               alt="Logo Gestão Arenas L.I" 
               className="w-full h-full object-contain object-center"
               style={{
-                filter: 'drop-shadow(1px 0px 0px rgba(255,255,255,0.8)) drop-shadow(-1px 0px 0px rgba(255,255,255,0.8)) drop-shadow(0px 1px 0px rgba(255,255,255,0.8)) drop-shadow(0px -1px 0px rgba(255,255,255,0.8))'
+                filter: 'drop-shadow(1px 0px 0px #ffffff) drop-shadow(-1px 0px 0px #ffffff) drop-shadow(0px 1px 0px #ffffff) drop-shadow(0px -1px 0px #ffffff)'
               }}
             />
           </div>

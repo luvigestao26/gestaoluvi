@@ -42,14 +42,14 @@ export default function Sidebar({ activeTab, onTabChange, userEmail, onLogout }:
   return (
     <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col h-screen sticky top-0 border-r border-slate-800">
       {/* Logo */}
-      <div className="p-6 border-b border-slate-800 flex flex-col items-center justify-center gap-2">
-        <div className="relative w-full h-20 flex items-center justify-center">
+      <div className="p-6 border-b border-slate-800 flex flex-col items-center justify-center gap-2 bg-slate-900">
+        <div className="relative w-full h-20 flex items-center justify-center bg-slate-900 rounded-2xl p-2 border border-slate-800/40">
           <img 
             src="/logo.png" 
             alt="Logo Gestão Arenas L.I" 
             className="w-full h-full object-contain object-center"
             style={{
-              filter: 'drop-shadow(1px 0px 0px rgba(255,255,255,0.8)) drop-shadow(-1px 0px 0px rgba(255,255,255,0.8)) drop-shadow(0px 1px 0px rgba(255,255,255,0.8)) drop-shadow(0px -1px 0px rgba(255,255,255,0.8))'
+              filter: 'drop-shadow(1px 0px 0px #ffffff) drop-shadow(-1px 0px 0px #ffffff) drop-shadow(0px 1px 0px #ffffff) drop-shadow(0px -1px 0px #ffffff)'
             }}
           />
         </div>
