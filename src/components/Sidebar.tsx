@@ -43,11 +43,11 @@ export default function Sidebar({ activeTab, onTabChange, userEmail, onLogout }:
     <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col h-screen sticky top-0 border-r border-slate-800">
       {/* Logo */}
       <div className="p-6 border-b border-slate-800 flex items-center gap-3">
-        <div className="relative w-12 h-12 rounded-2xl overflow-hidden border border-slate-700 bg-slate-950 flex items-center justify-center shrink-0 shadow-inner">
+        <div className="relative w-12 h-12 rounded-2xl overflow-hidden border border-slate-700 bg-slate-950/40 flex items-center justify-center shrink-0 shadow-inner p-1">
           <img 
             src="/logo.png" 
             alt="Logo Gestão Arenas L.I" 
-            className="w-full h-full object-cover object-center scale-105"
+            className="w-full h-full object-contain object-center"
           />
         </div>
         <div>
