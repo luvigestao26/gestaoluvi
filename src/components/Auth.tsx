@@ -76,7 +76,8 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
-        });
+          }
+        );
         if (signInError) throw signInError;
 
         if (signInData.user) {
@@ -121,12 +122,14 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 text-slate-100 p-4">
       <div className="w-full max-w-md space-y-6">
         {/* Logo / Header */}
-        <div className="text-center space-y-2">
-          <img 
-            src="/logo.png" 
-            alt="Logo Gestão Arenas L.I" 
-            className="w-20 h-20 mx-auto rounded-2xl object-cover border border-slate-800 shadow-lg shadow-blue-600/10"
-          />
+        <div className="text-center space-y-3">
+          <div className="relative w-24 h-24 mx-auto rounded-3xl overflow-hidden border border-slate-800 shadow-lg shadow-blue-600/10 bg-slate-900 flex items-center justify-center">
+            <img 
+              src="/logo.png" 
+              alt="Logo Gestão Arenas L.I" 
+              className="w-full h-full object-cover object-center scale-105"
+            />
+          </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-white">Gestão Arenas L.I</h1>
           <p className="text-sm text-slate-400">Seu painel completo de controle e agendamentos esportivos</p>
         </div>
