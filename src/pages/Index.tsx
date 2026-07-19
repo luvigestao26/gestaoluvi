@@ -305,7 +305,8 @@ export default function Index() {
     }
 
     const formattedDate = newBooking.date.split('-').reverse().join('/');
-    const msg = `Olá, *${newBooking.customerName}*!\n\nSua reserva na *${settings.name}* foi confirmada com sucesso! 🎉\n\n📅 *Data:* ${formattedDate}\n⏰ *Horário:* ${newBooking.timeSlot}\n🏟️ *Quadra:* ${newBooking.fieldName}\n💵 *Valor:* R$ ${newBooking.price.toFixed(2)}\n🚦 *Status:* ${newBooking.paid ? '✅ Pago' : '⏳ Pendente de Pagamento'}\n\n_Chave Pix para pagamento:_ ${settings.pixKey} (${settings.bankName})\n\nObrigado e bom jogo! ⚽🎾`;
+    const cleanName = newBooking.customerName.trim();
+    const msg = `Olá, *${cleanName}*!\n\nSua reserva na *${settings.name}* foi confirmada com sucesso! 🎉\n\n📅 *Data:* ${formattedDate}\n⏰ *Horário:* ${newBooking.timeSlot}\n🏟️ *Quadra:* ${newBooking.fieldName}\n💵 *Valor:* R$ ${newBooking.price.toFixed(2)}\n🚦 *Status:* ${newBooking.paid ? '✅ Pago' : '⏳ Pendente de Pagamento'}\n\n_Chave Pix para pagamento:_ ${settings.pixKey} (${settings.bankName})\n\nObrigado e bom jogo! ⚽🎾`;
     setWhatsappPhone(newBooking.customerPhone || null);
     setWhatsappMessage(msg);
   };
@@ -343,7 +344,8 @@ export default function Index() {
           setTransactions(prev => [newTransaction, ...prev]);
 
           const formattedDate = b.date.split('-').reverse().join('/');
-          const msg = `Olá, *${b.customerName}*!\n\nConfirmamos o recebimento do seu pagamento para a reserva do dia *${formattedDate}* às *${b.timeSlot}* na *${b.fieldName}*! 💵✅\n\nTudo pronto para o seu jogo. Nos vemos na *${settings.name}*! ⚽🎾`;
+          const cleanName = b.customerName.trim();
+          const msg = `Olá, *${cleanName}*!\n\nConfirmamos o recebimento do seu pagamento referente à reserva do dia *${formattedDate}*, às *${b.timeSlot}*, na quadra *${b.fieldName}*! 💵✅\n\nTudo pronto para o seu jogo. Nos vemos na *${settings.name}*! ⚽🎾`;
           setWhatsappPhone(b.customerPhone || null);
           setWhatsappMessage(msg);
         } else {
