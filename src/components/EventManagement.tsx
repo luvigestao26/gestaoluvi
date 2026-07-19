@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { showSuccess, showError } from "@/utils/toast";
+import { getBrasiliaDate } from "@/utils/date";
+import SplitPaymentInput from "./SplitPaymentInput";
 
 interface EventManagementProps {
   eventos: any[];
@@ -17,22 +19,23 @@ interface EventManagementProps {
 }
 
 export default function EventManagement({ eventos, fields, onAddEvento, onDeleteEvento }: EventManagementProps) {
+  const todayStr = getBrasiliaDate();
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [dates, setDates] = useState<string[]>([new Date().toISOString().split('T')[0]]); // Array de datas selecionadas
+  const [dates, setDates] = useState<string[]>([todayStr]); // Array de datas selecionadas
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("18:00");
   const [price, setPrice] = useState("");
   const [fieldId, setFieldId] = useState("");
   const [recurrence, setRecurrence] = useState("once"); // once, weekly, biweekly, monthly_3x, custom
   const [paymentMethod, setPaymentMethod] = useState("Pix");
+  const [splitPaymentDetails, setSplitPaymentDetails] = useState("");
 
   // Group events in the UI to show a single card per event series
   const groupedEventos = React.useMemo(() => {
     const groups: { [key: string]: any } = {};
     eventos.forEach(ev => {
-      // Group by title, description, startTime, endTime, price, fieldId, recurrence, paymentMethod
       const key = `${ev.title}-${ev.description}-${ev.startTime}-${ev.endTime}-${ev.price}-${ev.fieldId}-${ev.recurrence}-${ev.paymentMethod}`;
       if (!groups[key]) {
         groups[key] = {
@@ -47,7 +50,6 @@ export default function EventManagement({ eventos, fields, onAddEvento, onDelete
         groups[key].ids.push(ev.id);
       }
     });
-    // Sort dates for each group
     Object.values(groups).forEach((g: any) => {
       g.dates.sort();
     });
@@ -62,7 +64,7 @@ export default function EventManagement({ eventos, fields, onAddEvento, onDelete
   }, [fields, fieldId]);
 
   const handleAddDateInput = () => {
-    setDates([...dates, new Date().toISOString().split('T')[0]]);
+    setDates([...dates, todayStr]);
   };
 
   const handleRemoveDateInput = (index: number) => {
@@ -87,12 +89,12 @@ export default function EventManagement({ eventos, fields, onAddEvento, onDelete
     }
 
     const selectedField = fields.find(f => f.id === fieldId);
+    const finalPaymentMethod = paymentMethod === 'Dividido' ? splitPaymentDetails : paymentMethod;
 
     // Divide o valor total igualmente entre as datas selecionadas
     const totalPrice = parseFloat(price);
     const pricePerDate = totalPrice / dates.length;
 
-    // Cadastra um registro de evento para cada data selecionada
     dates.forEach((d, index) => {
       const newEvento = {
         id: `${Date.now()}-${index}`,
@@ -105,7 +107,7 @@ export default function EventManagement({ eventos, fields, onAddEvento, onDelete
         fieldId,
         fieldName: selectedField ? selectedField.name : "Quadra",
         recurrence,
-        paymentMethod
+        paymentMethod: finalPaymentMethod
       };
       onAddEvento(newEvento);
     });
@@ -116,7 +118,7 @@ export default function EventManagement({ eventos, fields, onAddEvento, onDelete
     setTitle("");
     setDescription("");
     setPrice("");
-    setDates([new Date().toISOString().split('T')[0]]);
+    setDates([todayStr]);
     setIsOpen(false);
   };
 
@@ -370,10 +372,18 @@ export default function EventManagement({ eventos, fields, onAddEvento, onDelete
                       <SelectItem value="Dinheiro">Dinheiro 💵</SelectItem>
                       <SelectItem value="Cartão de Crédito">Cartão de Crédito 💳</SelectItem>
                       <SelectItem value="Cartão de Débito">Cartão de Débito 💳</SelectItem>
+                      <SelectItem value="Dividido">Dividido 🤝</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+
+              {paymentMethod === 'Dividido' && (
+                <SplitPaymentInput 
+                  totalPrice={parseFloat(price) || 0} 
+                  onChange={setSplitPaymentDetails} 
+                />
+              )}
 
               <div className="pt-4 flex gap-3 shrink-0">
                 <Button

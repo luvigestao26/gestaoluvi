@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Plus, Trash2, Calendar, DollarSign, Tag, Check, X, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Tag, Check, X, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { showSuccess, showError } from "@/utils/toast";
+import { getBrasiliaDate } from "@/utils/date";
 
 interface AccountsPayableManagementProps {
   accountsPayable: any[];
@@ -22,10 +23,11 @@ export default function AccountsPayableManagement({
   onDeleteAccount, 
   onTogglePaidStatus 
 }: AccountsPayableManagementProps) {
+  const todayStr = getBrasiliaDate();
   const [isOpen, setIsOpen] = useState(false);
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
+  const [dueDate, setDueDate] = useState(todayStr);
   const [category, setCategory] = useState("Energia / Água");
 
   const handleSubmit = (e: React.FormEvent) => {

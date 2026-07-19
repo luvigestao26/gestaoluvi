@@ -1,28 +1,33 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { MessageSquare, Send, X, CheckCheck } from 'lucide-react';
+import { MessageSquare, Send, X, CheckCheck, ExternalLink } from 'lucide-react';
 
 interface WhatsAppSimulatorProps {
   message: string | null;
+  phone: string | null;
   onClose: () => void;
 }
 
-export default function WhatsAppSimulator({ message, onClose }: WhatsAppSimulatorProps) {
+export default function WhatsAppSimulator({ message, phone, onClose }: WhatsAppSimulatorProps) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     if (message) {
       setVisible(true);
-      const timer = setTimeout(() => {
-        setVisible(false);
-        setTimeout(onClose, 300); // wait for fade out animation
-      }, 6000);
-      return () => clearTimeout(timer);
     }
-  }, [message, onClose]);
+  }, [message]);
 
   if (!message || !visible) return null;
+
+  // Limpar o número de telefone para o link do WhatsApp
+  const cleanPhone = phone ? phone.replace(/\D/g, '') : '';
+  // Adicionar código do país (55 para Brasil) se não tiver
+  const formattedPhone = cleanPhone.length === 11 || cleanPhone.length === 10 
+    ? `55${cleanPhone}` 
+    : cleanPhone;
+
+  const whatsappUrl = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodeURIComponent(message)}`;
 
   return (
     <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full bg-white rounded-2xl shadow-2xl border border-emerald-100 overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
@@ -34,13 +39,13 @@ export default function WhatsAppSimulator({ message, onClose }: WhatsAppSimulato
           </div>
           <div>
             <h4 className="font-bold text-sm">Notificação WhatsApp</h4>
-            <p className="text-[10px] text-emerald-100">Simulação de envio automático</p>
+            <p className="text-[10px] text-emerald-100">Envio automático para o cliente</p>
           </div>
         </div>
         <button 
           onClick={() => {
             setVisible(false);
-            setTimeout(onClose, 300);
+            onClose();
           }}
           className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
         >
@@ -60,10 +65,27 @@ export default function WhatsAppSimulator({ message, onClose }: WhatsAppSimulato
           </div>
         </div>
 
-        {/* Footer Status */}
-        <div className="mt-3 flex items-center gap-1.5 text-[10px] text-emerald-700 font-semibold bg-emerald-50 p-2 rounded-lg self-stretch justify-center">
-          <Send size={12} />
-          <span>Mensagem enviada com sucesso para o cliente!</span>
+        {/* Action Buttons */}
+        <div className="mt-4 space-y-2">
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all shadow-md shadow-emerald-600/20"
+          >
+            <ExternalLink size={14} />
+            Enviar no WhatsApp do Cliente
+          </a>
+          
+          <button
+            onClick={() => {
+              setVisible(false);
+              onClose();
+            }}
+            className="w-full bg-white hover:bg-slate-50 text-slate-600 font-semibold py-2 px-4 rounded-xl text-xs border border-slate-200 transition-all"
+          >
+            Fechar Notificação
+          </button>
         </div>
       </div>
     </div>

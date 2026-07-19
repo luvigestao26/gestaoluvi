@@ -20,6 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { showSuccess, showError } from "@/utils/toast";
+import { getBrasiliaDate } from "@/utils/date";
+import SplitPaymentInput from "./SplitPaymentInput";
 
 interface BookingCalendarProps {
   bookings: any[];
@@ -64,7 +66,8 @@ export default function BookingCalendar({
   onUnblockSlot,
   onAddMensalista
 }: BookingCalendarProps) {
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const todayStr = getBrasiliaDate();
+  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [selectedFieldId, setSelectedFieldId] = useState<string>("");
   const [isNewBookingOpen, setIsNewBookingOpen] = useState(false);
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
@@ -76,12 +79,13 @@ export default function BookingCalendar({
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [selectedSport, setSelectedSport] = useState("Futebol");
-  const [bookingDate, setBookingDate] = useState(selectedDate);
+  const [bookingDate, setBookingDate] = useState(todayStr);
   const [startTime, setStartTime] = useState("18:00");
   const [endTime, setEndTime] = useState("19:00");
   const [price, setPrice] = useState("");
   const [isPaid, setIsPaid] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("Pix");
+  const [splitPaymentDetails, setSplitPaymentDetails] = useState("");
   const [recurrence, setRecurrence] = useState("weekly"); // for mensalista
 
   // Form states for blocking
@@ -89,12 +93,16 @@ export default function BookingCalendar({
   const [blockEndTime, setBlockEndTime] = useState("11:00");
   const [blockType, setBlockType] = useState<'single' | 'monthly'>('single');
 
+  // Reset bookingDate when selectedDate changes
+  useEffect(() => {
+    setBookingDate(selectedDate);
+  }, [selectedDate]);
+
   // Derive unique customers from existing bookings (diaristas) and mensalistas
   const derivedCustomers = React.useMemo(() => {
     const list: Array<{ id: string; name: string; phone: string }> = [];
     const seen = new Set<string>();
 
-    // From bookings (diaristas)
     bookings.forEach(b => {
       if (b.customerName) {
         const key = `${b.customerName.trim().toLowerCase()}_${(b.customerPhone || '').trim()}`;
@@ -109,7 +117,6 @@ export default function BookingCalendar({
       }
     });
 
-    // From mensalistas
     mensalistas.forEach(m => {
       if (m.customerName) {
         const key = `${m.customerName.trim().toLowerCase()}_${(m.customerPhone || '').trim()}`;
@@ -157,10 +164,8 @@ export default function BookingCalendar({
       return false;
     }
 
-    // Decode recurrence
     const recType = m.recurrence?.split('_due_')[0] || m.recurrence;
 
-    // Recurrence logic
     if (recType === 'biweekly') {
       const dateObj = new Date(selectedDate + 'T00:00:00');
       const oneJan = new Date(dateObj.getFullYear(), 0, 1);
@@ -219,12 +224,10 @@ export default function BookingCalendar({
     const dayStart = parseTimeToMinutes(openTime);
     let dayEnd = parseTimeToMinutes(closeTime);
     
-    // If close time is midnight (00:00), treat it as 24:00 (1440 minutes)
     if (dayEnd === 0 || closeTime === "00:00") {
       dayEnd = 24 * 60;
     }
 
-    // Collect all busy intervals
     const busyIntervals: Array<{
       start: number;
       end: number;
@@ -233,7 +236,6 @@ export default function BookingCalendar({
       data: any;
     }> = [];
 
-    // 1. Add Diarista bookings
     filteredBookings.forEach(b => {
       try {
         const [startStr, endStr] = b.timeSlot.split('-');
@@ -250,7 +252,6 @@ export default function BookingCalendar({
       } catch (e) {}
     });
 
-    // 2. Add Mensalistas
     activeMensalistas.forEach(m => {
       try {
         const [startStr, endStr] = m.timeSlot.split('-');
@@ -267,7 +268,6 @@ export default function BookingCalendar({
       } catch (e) {}
     });
 
-    // 3. Add Events
     activeEventos.forEach(ev => {
       try {
         let startMin = parseTimeToMinutes(ev.startTime);
@@ -283,7 +283,6 @@ export default function BookingCalendar({
       } catch (e) {}
     });
 
-    // 4. Add Blocks
     activeBlocks.forEach(block => {
       try {
         const [startStr, endStr] = block.timeSlot.split('-');
@@ -300,10 +299,8 @@ export default function BookingCalendar({
       } catch (e) {}
     });
 
-    // Sort busy intervals by start time
     busyIntervals.sort((a, b) => a.start - b.start);
 
-    // Build the timeline
     const timeline: Array<{
       start: number;
       end: number;
@@ -316,12 +313,10 @@ export default function BookingCalendar({
     let current = dayStart;
 
     busyIntervals.forEach(interval => {
-      // If there is a gap before this busy interval, fill it with free slots
       if (interval.start > current) {
         let gapStart = current;
         const gapEnd = interval.start;
 
-        // Split the gap into 1-hour slots for better usability
         while (gapStart < gapEnd) {
           const nextHour = gapStart + 60;
           const slotEnd = Math.min(nextHour, gapEnd);
@@ -334,7 +329,6 @@ export default function BookingCalendar({
         }
       }
 
-      // Add the busy interval
       timeline.push({
         start: interval.start,
         end: interval.end,
@@ -347,7 +341,6 @@ export default function BookingCalendar({
       current = Math.max(current, interval.end);
     });
 
-    // Fill any remaining gap at the end of the day
     if (current < dayEnd) {
       let gapStart = current;
       while (gapStart < dayEnd) {
@@ -376,6 +369,7 @@ export default function BookingCalendar({
 
     const customTimeSlot = `${startTime} - ${endTime}`;
     const field = fields.find(f => f.id === selectedFieldId);
+    const finalPaymentMethod = paymentMethod === 'Dividido' ? splitPaymentDetails : paymentMethod;
 
     if (bookingType === 'mensalista') {
       if (!onAddMensalista) {
@@ -395,7 +389,7 @@ export default function BookingCalendar({
         price: parseFloat(price),
         active: true,
         recurrence,
-        paymentMethod
+        paymentMethod: finalPaymentMethod
       };
       onAddMensalista(newMensalista);
       showSuccess("Mensalista fixado com sucesso na agenda!");
@@ -411,7 +405,7 @@ export default function BookingCalendar({
         timeSlot: customTimeSlot,
         price: parseFloat(price),
         paid: isPaid,
-        paymentMethod
+        paymentMethod: finalPaymentMethod
       };
       onAddBooking(newBooking);
       showSuccess("Diarista agendado com sucesso!");
@@ -908,10 +902,18 @@ export default function BookingCalendar({
                       <SelectItem value="Dinheiro">Dinheiro 💵</SelectItem>
                       <SelectItem value="Cartão de Crédito">Cartão de Crédito 💳</SelectItem>
                       <SelectItem value="Cartão de Débito">Cartão de Débito 💳</SelectItem>
+                      <SelectItem value="Dividido">Dividido 🤝</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+
+              {paymentMethod === 'Dividido' && (
+                <SplitPaymentInput 
+                  totalPrice={parseFloat(price) || 0} 
+                  onChange={setSplitPaymentDetails} 
+                />
+              )}
 
               {bookingType === 'mensalista' && (
                 <div className="space-y-1">

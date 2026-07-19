@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { showSuccess, showError } from "@/utils/toast";
+import { getBrasiliaDate } from "@/utils/date";
+import SplitPaymentInput from "./SplitPaymentInput";
 
 interface VendasManagementProps {
   sales: any[];
@@ -16,12 +18,14 @@ interface VendasManagementProps {
 }
 
 export default function VendasManagement({ sales, products, onAddSale, onDeleteSale }: VendasManagementProps) {
+  const todayStr = getBrasiliaDate();
   const [isOpen, setIsOpen] = useState(false);
 
   // Form states
   const [productId, setProductId] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [paymentMethod, setPaymentMethod] = useState("Pix");
+  const [splitPaymentDetails, setSplitPaymentDetails] = useState("");
   const [customerName, setCustomerName] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -44,6 +48,7 @@ export default function VendasManagement({ sales, products, onAddSale, onDeleteS
     }
 
     const total = product.salePrice * qty;
+    const finalPaymentMethod = paymentMethod === 'Dividido' ? splitPaymentDetails : paymentMethod;
 
     const newSale = {
       id: Date.now().toString(),
@@ -51,9 +56,9 @@ export default function VendasManagement({ sales, products, onAddSale, onDeleteS
       productName: product.name,
       quantity: qty,
       total,
-      paymentMethod,
+      paymentMethod: finalPaymentMethod,
       customerName: customerName || "Consumidor Final",
-      date: new Date().toISOString().split('T')[0]
+      date: todayStr
     };
 
     onAddSale(newSale);
@@ -215,9 +220,17 @@ export default function VendasManagement({ sales, products, onAddSale, onDeleteS
                     <option value="Dinheiro" className="bg-slate-950 text-white">Dinheiro 💵</option>
                     <option value="Cartão de Crédito" className="bg-slate-950 text-white">Cartão de Crédito 💳</option>
                     <option value="Cartão de Débito" className="bg-slate-950 text-white">Cartão de Débito 💳</option>
+                    <option value="Dividido" className="bg-slate-950 text-white">Dividido 🤝</option>
                   </select>
                 </div>
               </div>
+
+              {paymentMethod === 'Dividido' && (
+                <SplitPaymentInput 
+                  totalPrice={(products.find(p => p.id === productId)?.salePrice || 0) * (parseInt(quantity) || 0)} 
+                  onChange={setSplitPaymentDetails} 
+                />
+              )}
 
               <div className="space-y-1">
                 <Label htmlFor="saleCustomer" className="text-slate-300 font-semibold">Nome do Cliente (Opcional)</Label>

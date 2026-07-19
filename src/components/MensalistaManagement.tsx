@@ -8,14 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { showSuccess, showError } from "@/utils/toast";
-
-interface MensalistaManagementProps {
-  mensalistas: any[];
-  fields: any[];
-  onAddMensalista: (mensalista: any) => void;
-  onDeleteMensalista: (id: string) => void;
-  onToggleActive: (id: string) => void;
-}
+import SplitPaymentInput from "./SplitPaymentInput";
 
 const DAYS_OF_WEEK = [
   { value: 0, label: "Domingo", short: "Dom" },
@@ -26,6 +19,14 @@ const DAYS_OF_WEEK = [
   { value: 5, label: "Sexta-feira", short: "Sex" },
   { value: 6, label: "Sábado", short: "Sáb" }
 ];
+
+interface MensalistaManagementProps {
+  mensalistas: any[];
+  fields: any[];
+  onAddMensalista: (mensalista: any) => void;
+  onDeleteMensalista: (id: string) => void;
+  onToggleActive: (id: string) => void;
+}
 
 export default function MensalistaManagement({ 
   mensalistas, 
@@ -46,12 +47,12 @@ export default function MensalistaManagement({
   const [recurrence, setRecurrence] = useState("weekly"); // weekly, biweekly, monthly_3x, custom
   const [dueDay, setDueDay] = useState("10"); // Dia de vencimento padrão: 10
   const [paymentMethod, setPaymentMethod] = useState("Pix");
+  const [splitPaymentDetails, setSplitPaymentDetails] = useState("");
 
   // Group mensalistas in the UI to show a single card per customer/schedule group
   const groupedMensalistas = React.useMemo(() => {
     const groups: { [key: string]: any } = {};
     mensalistas.forEach(m => {
-      // Group by customerName, timeSlot, fieldId, price, recurrence, paymentMethod
       const key = `${m.customerName}-${m.timeSlot}-${m.fieldId}-${m.price}-${m.recurrence}-${m.paymentMethod}`;
       if (!groups[key]) {
         groups[key] = {
@@ -66,7 +67,6 @@ export default function MensalistaManagement({
         groups[key].ids.push(m.id);
       }
     });
-    // Sort days of week for each group
     Object.values(groups).forEach((g: any) => {
       g.daysOfWeek.sort((a: number, b: number) => a - b);
     });
@@ -117,15 +117,13 @@ export default function MensalistaManagement({
 
     const selectedField = fields.find(f => f.id === fieldId);
     const customTimeSlot = `${startTime} - ${endTime}`;
-
-    // Encode dueDay inside recurrence field to avoid database schema mismatch
     const encodedRecurrence = `${recurrence}_due_${dueDay}`;
+    const finalPaymentMethod = paymentMethod === 'Dividido' ? splitPaymentDetails : paymentMethod;
 
     // Divide o valor mensal total igualmente entre os dias selecionados
     const totalPrice = parseFloat(price);
     const pricePerDay = totalPrice / selectedDays.length;
 
-    // Cadastra um registro de mensalista para cada dia selecionado
     selectedDays.forEach((day, index) => {
       const newMensalista = {
         id: `${Date.now()}-${day}-${index}`,
@@ -139,7 +137,7 @@ export default function MensalistaManagement({
         price: pricePerDay,
         active: true,
         recurrence: encodedRecurrence,
-        paymentMethod
+        paymentMethod: finalPaymentMethod
       };
       onAddMensalista(newMensalista);
     });
@@ -175,7 +173,6 @@ export default function MensalistaManagement({
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {groupedMensalistas.map((m) => {
-          // Decode recurrence and dueDay
           const [recType, decodedDueDay] = (m.recurrence || 'weekly').split('_due_');
           
           return (
@@ -437,6 +434,7 @@ export default function MensalistaManagement({
                       <SelectItem value="Dinheiro">Dinheiro 💵</SelectItem>
                       <SelectItem value="Cartão de Crédito">Cartão de Crédito 💳</SelectItem>
                       <SelectItem value="Cartão de Débito">Cartão de Débito 💳</SelectItem>
+                      <SelectItem value="Dividido">Dividido 🤝</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -454,6 +452,13 @@ export default function MensalistaManagement({
                   />
                 </div>
               </div>
+
+              {paymentMethod === 'Dividido' && (
+                <SplitPaymentInput 
+                  totalPrice={parseFloat(price) || 0} 
+                  onChange={setSplitPaymentDetails} 
+                />
+              )}
 
               <div className="pt-4 flex gap-3 shrink-0">
                 <Button

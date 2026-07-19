@@ -73,6 +73,27 @@ export default function Index() {
   const [products, setProducts] = useState<any[]>([]);
   const [sales, setSales] = useState<any[]>([]);
   const [whatsappMessage, setWhatsappMessage] = useState<string | null>(null);
+  const [whatsappPhone, setWhatsappPhone] = useState<string | null>(null);
+
+  // Intercept browser back button to navigate tabs instead of leaving the app
+  useEffect(() => {
+    if (!user) return;
+
+    // Push initial state
+    window.history.pushState({ tab: activeTab }, '');
+
+    const handlePopState = (event: PopStateEvent) => {
+      if (activeTab !== 'dashboard') {
+        // Prevent leaving the app, go back to dashboard tab
+        event.preventDefault();
+        setActiveTab('dashboard');
+        window.history.pushState({ tab: 'dashboard' }, '');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [activeTab, user]);
 
   // Check active session on mount
   useEffect(() => {
@@ -132,7 +153,6 @@ export default function Index() {
       if (settingsData) {
         setSettings(keysToCamel(settingsData));
       } else {
-        // Se não houver configurações salvas, tenta usar o nome da arena salvo nos metadados do usuário
         const metaArenaName = currentUser.raw_user_meta_data?.arena_name;
         const userSettings = { 
           ...INITIAL_SETTINGS, 
@@ -286,6 +306,7 @@ export default function Index() {
 
     const formattedDate = newBooking.date.split('-').reverse().join('/');
     const msg = `Olá, *${newBooking.customerName}*!\n\nSua reserva na *${settings.name}* foi confirmada com sucesso! 🎉\n\n📅 *Data:* ${formattedDate}\n⏰ *Horário:* ${newBooking.timeSlot}\n🏟️ *Quadra:* ${newBooking.fieldName}\n💵 *Valor:* R$ ${newBooking.price.toFixed(2)}\n🚦 *Status:* ${newBooking.paid ? '✅ Pago' : '⏳ Pendente de Pagamento'}\n\n_Chave Pix para pagamento:_ ${settings.pixKey} (${settings.bankName})\n\nObrigado e bom jogo! ⚽🎾`;
+    setWhatsappPhone(newBooking.customerPhone || null);
     setWhatsappMessage(msg);
   };
 
@@ -323,6 +344,7 @@ export default function Index() {
 
           const formattedDate = b.date.split('-').reverse().join('/');
           const msg = `Olá, *${b.customerName}*!\n\nConfirmamos o recebimento do seu pagamento para a reserva do dia *${formattedDate}* às *${b.timeSlot}* na *${b.fieldName}*! 💵✅\n\nTudo pronto para o seu jogo. Nos vemos na *${settings.name}*! ⚽🎾`;
+          setWhatsappPhone(b.customerPhone || null);
           setWhatsappMessage(msg);
         } else {
           if (supabase) {
@@ -358,7 +380,7 @@ export default function Index() {
     setBlockedSlots(blockedSlots.filter(b => b.id !== id));
   };
 
-  // Mensalista Handlers (Usa atualizações funcionais para suportar múltiplos cadastros simultâneos)
+  // Mensalista Handlers
   const handleAddMensalista = async (newMensalista: any) => {
     const supabase = getSupabaseClient();
     const mensalistaWithUser = { ...newMensalista, id: `${user.id}_${newMensalista.id}` };
@@ -585,10 +607,7 @@ export default function Index() {
     const supabase = getSupabaseClient();
     const settingsWithUser = { ...updatedSettings, id: user.id };
     if (supabase) {
-      // 1. Atualiza a tabela de configurações
       await supabase.from('settings').update(keysToSnake(settingsWithUser)).eq('id', user.id);
-      
-      // 2. Atualiza os metadados do usuário no Supabase Auth para que o nome da arena apareça no painel do Supabase
       await supabase.auth.updateUser({
         data: { arena_name: updatedSettings.name }
       });
@@ -597,7 +616,6 @@ export default function Index() {
     showSuccess("Configurações salvas com sucesso!");
   };
 
-  // If auth is not checked yet, show a loading spinner
   if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-100">
@@ -609,7 +627,6 @@ export default function Index() {
     );
   }
 
-  // If user is not logged in, show the Auth screen
   if (!user) {
     return <Auth onAuthSuccess={(loggedInUser) => {
       setUser(loggedInUser);
@@ -800,7 +817,11 @@ export default function Index() {
         {/* WhatsApp Simulator Widget */}
         <WhatsAppSimulator 
           message={whatsappMessage} 
-          onClose={() => setWhatsappMessage(null)} 
+          phone={whatsappPhone}
+          onClose={() => {
+            setWhatsappMessage(null);
+            setWhatsappPhone(null);
+          }} 
         />
 
         {/* Footer */}

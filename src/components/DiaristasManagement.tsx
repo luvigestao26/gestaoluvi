@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { showSuccess, showError } from "@/utils/toast";
+import { getBrasiliaDate } from "@/utils/date";
+import SplitPaymentInput from "./SplitPaymentInput";
 
 interface DiaristasManagementProps {
   bookings: any[];
@@ -26,6 +28,7 @@ export default function DiaristasManagement({
   onDeleteBooking, 
   onTogglePaid 
 }: DiaristasManagementProps) {
+  const todayStr = getBrasiliaDate();
   const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
@@ -34,19 +37,19 @@ export default function DiaristasManagement({
   const [customerPhone, setCustomerPhone] = useState("");
   const [selectedFieldId, setSelectedFieldId] = useState("");
   const [selectedSport, setSelectedSport] = useState("Futebol");
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(todayStr);
   const [startTime, setStartTime] = useState("18:00");
   const [endTime, setEndTime] = useState("19:00");
   const [price, setPrice] = useState("");
   const [isPaid, setIsPaid] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("Pix");
+  const [splitPaymentDetails, setSplitPaymentDetails] = useState("");
 
   // Derive unique customers from existing bookings (diaristas) and mensalistas
   const derivedCustomers = React.useMemo(() => {
     const list: Array<{ id: string; name: string; phone: string }> = [];
     const seen = new Set<string>();
 
-    // From bookings (diaristas)
     bookings.forEach(b => {
       if (b.customerName) {
         const key = `${b.customerName.trim().toLowerCase()}_${(b.customerPhone || '').trim()}`;
@@ -105,6 +108,7 @@ export default function DiaristasManagement({
 
     const customTimeSlot = `${startTime} - ${endTime}`;
     const field = fields.find(f => f.id === selectedFieldId);
+    const finalPaymentMethod = paymentMethod === 'Dividido' ? splitPaymentDetails : paymentMethod;
 
     const newBooking = {
       id: Date.now().toString(),
@@ -117,7 +121,7 @@ export default function DiaristasManagement({
       timeSlot: customTimeSlot,
       price: parseFloat(price),
       paid: isPaid,
-      paymentMethod
+      paymentMethod: finalPaymentMethod
     };
 
     onAddBooking(newBooking);
@@ -390,10 +394,18 @@ export default function DiaristasManagement({
                       <SelectItem value="Dinheiro">Dinheiro 💵</SelectItem>
                       <SelectItem value="Cartão de Crédito">Cartão de Crédito 💳</SelectItem>
                       <SelectItem value="Cartão de Débito">Cartão de Débito 💳</SelectItem>
+                      <SelectItem value="Dividido">Dividido 🤝</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+
+              {paymentMethod === 'Dividido' && (
+                <SplitPaymentInput 
+                  totalPrice={parseFloat(price) || 0} 
+                  onChange={setSplitPaymentDetails} 
+                />
+              )}
 
               <div className="flex items-center space-x-2 pt-4">
                 <input

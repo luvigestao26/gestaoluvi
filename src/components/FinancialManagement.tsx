@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Plus, ArrowUpRight, ArrowDownRight, DollarSign, Trash2, Calendar, Tag, FileText, X } from 'lucide-react';
+import { Plus, ArrowUpRight, ArrowDownRight, DollarSign, Trash2, Tag, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { showSuccess, showError } from "@/utils/toast";
+import { getBrasiliaDate } from "@/utils/date";
 
 interface FinancialManagementProps {
   transactions: any[];
@@ -16,6 +17,7 @@ interface FinancialManagementProps {
 }
 
 export default function FinancialManagement({ transactions, onAddTransaction, onDeleteTransaction }: FinancialManagementProps) {
+  const todayStr = getBrasiliaDate();
   const [isNewTransactionOpen, setIsNewTransactionOpen] = useState(false);
 
   // Form states
@@ -23,7 +25,7 @@ export default function FinancialManagement({ transactions, onAddTransaction, on
   const [amount, setAmount] = useState("");
   const [type, setType] = useState<"income" | "expense">("income");
   const [category, setCategory] = useState("Aluguel de Quadra");
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(todayStr);
 
   // Calculate totals
   const totalIncome = transactions

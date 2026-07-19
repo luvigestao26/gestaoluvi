@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { showSuccess } from "@/utils/toast";
+import { getBrasiliaDate, getBrasiliaFirstDayOfMonth } from "@/utils/date";
 
 interface RelatoriosManagementProps {
   bookings: any[];
@@ -32,16 +33,30 @@ interface RelatoriosManagementProps {
 }
 
 export default function RelatoriosManagement({ bookings, transactions, sales, accountsPayable }: RelatoriosManagementProps) {
-  const todayStr = new Date().toISOString().split('T')[0];
-  const firstDayOfMonthStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+  const todayStr = getBrasiliaDate();
+  const firstDayOfMonthStr = getBrasiliaFirstDayOfMonth();
 
   const [startDate, setStartDate] = useState(firstDayOfMonthStr);
   const [endDate, setEndDate] = useState(todayStr);
 
-  // Filter data based on selected date range
-  const filteredTransactions = transactions.filter(t => t.date >= startDate && t.date <= endDate);
-  const filteredSales = sales.filter(s => s.date >= startDate && s.date <= endDate);
-  const filteredBookings = bookings.filter(b => b.date >= startDate && b.date <= endDate);
+  // Filter data based on selected date range (only if dates are valid)
+  const isValidStartDate = startDate && startDate.length === 10 && !isNaN(Date.parse(startDate));
+  const isValidEndDate = endDate && endDate.length === 10 && !isNaN(Date.parse(endDate));
+
+  const filteredTransactions = transactions.filter(t => {
+    if (!isValidStartDate || !isValidEndDate) return true;
+    return t.date >= startDate && t.date <= endDate;
+  });
+
+  const filteredSales = sales.filter(s => {
+    if (!isValidStartDate || !isValidEndDate) return true;
+    return s.date >= startDate && s.date <= endDate;
+  });
+
+  const filteredBookings = bookings.filter(b => {
+    if (!isValidStartDate || !isValidEndDate) return true;
+    return b.date >= startDate && b.date <= endDate;
+  });
 
   // Financial calculations
   const totalIncome = filteredTransactions
@@ -77,29 +92,39 @@ export default function RelatoriosManagement({ bookings, transactions, sales, ac
   const incomeTransactions = filteredTransactions.filter(t => t.type === 'income');
   
   const pixRevenue = incomeTransactions
-    .filter(t => !t.paymentMethod || t.paymentMethod === 'Pix')
+    .filter(t => !t.paymentMethod || t.paymentMethod.includes('Pix'))
     .reduce((sum, t) => sum + t.amount, 0);
 
   const moneyRevenue = incomeTransactions
-    .filter(t => t.paymentMethod === 'Dinheiro')
+    .filter(t => t.paymentMethod && t.paymentMethod.includes('Dinheiro'))
     .reduce((sum, t) => sum + t.amount, 0);
 
   const creditRevenue = incomeTransactions
-    .filter(t => t.paymentMethod === 'Cartão de Crédito')
+    .filter(t => t.paymentMethod && t.paymentMethod.includes('Crédito'))
     .reduce((sum, t) => sum + t.amount, 0);
 
   const debitRevenue = incomeTransactions
-    .filter(t => t.paymentMethod === 'Cartão de Débito')
+    .filter(t => t.paymentMethod && t.paymentMethod.includes('Débito'))
     .reduce((sum, t) => sum + t.amount, 0);
 
   // Prepare chart data for selected range
   const getChartData = () => {
+    if (!isValidStartDate || !isValidEndDate) {
+      return [];
+    }
+
     const data = [];
     const start = new Date(startDate + 'T00:00:00');
     const end = new Date(endDate + 'T00:00:00');
     
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return [];
+    }
+
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+    
+    // Prevent infinite loop or excessive iterations if dates are weird
     const step = Math.max(1, Math.ceil(diffDays / 10));
 
     for (let i = 0; i <= diffDays; i += step) {
@@ -376,26 +401,32 @@ export default function RelatoriosManagement({ bookings, transactions, sales, ac
             <CardDescription className="text-slate-400">Comparativo de receitas e despesas</CardDescription>
           </CardHeader>
           <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: '1px solid #1e293b', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }} />
-                <Area type="monotone" dataKey="Receitas" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" />
-                <Area type="monotone" dataKey="Despesas" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorExpense)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
+                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: '1px solid #1e293b', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }} />
+                  <Area type="monotone" dataKey="Receitas" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" />
+                  <Area type="monotone" dataKey="Despesas" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorExpense)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-slate-500 text-sm">
+                Aguardando intervalo de datas válido...
+              </div>
+            )}
           </CardContent>
         </Card>
 
