@@ -18,7 +18,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { showSuccess, showError } from "@/utils/toast";
 import { getBrasiliaDate } from "@/utils/date";
 import SplitPaymentInput from "./SplitPaymentInput";
@@ -39,7 +38,6 @@ interface BookingCalendarProps {
   onAddMensalista?: (mensalista: any) => void;
 }
 
-// Helper functions for time calculations
 const parseTimeToMinutes = (timeStr: string): number => {
   const [hours, minutes] = timeStr.trim().split(':').map(Number);
   return hours * 60 + minutes;
@@ -72,10 +70,9 @@ export default function BookingCalendar({
   const [isNewBookingOpen, setIsNewBookingOpen] = useState(false);
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   
-  // Toggle between Diarista and Mensalista in the creation modal
   const [bookingType, setBookingType] = useState<'diarista' | 'mensalista'>('diarista');
 
-  // Form states for booking/mensalista
+  // Form states
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [selectedSport, setSelectedSport] = useState("Futebol");
@@ -86,19 +83,17 @@ export default function BookingCalendar({
   const [isPaid, setIsPaid] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("Pix");
   const [splitPaymentDetails, setSplitPaymentDetails] = useState("");
-  const [recurrence, setRecurrence] = useState("weekly"); // for mensalista
+  const [recurrence, setRecurrence] = useState("weekly");
 
-  // Form states for blocking
+  // Block states
   const [blockStartTime, setBlockStartTime] = useState("10:00");
   const [blockEndTime, setBlockEndTime] = useState("11:00");
   const [blockType, setBlockType] = useState<'single' | 'monthly'>('single');
 
-  // Reset bookingDate when selectedDate changes
   useEffect(() => {
     setBookingDate(selectedDate);
   }, [selectedDate]);
 
-  // Derive unique customers from existing bookings (diaristas) and mensalistas
   const derivedCustomers = React.useMemo(() => {
     const list: Array<{ id: string; name: string; phone: string }> = [];
     const seen = new Set<string>();
@@ -134,14 +129,12 @@ export default function BookingCalendar({
     return list;
   }, [bookings, mensalistas]);
 
-  // Sync selectedFieldId when fields load asynchronously
   useEffect(() => {
     if (fields.length > 0 && !selectedFieldId) {
       setSelectedFieldId(fields[0].id);
     }
   }, [fields, selectedFieldId]);
 
-  // Automatically update sport and price when selectedFieldId changes
   useEffect(() => {
     const field = fields.find(f => f.id === selectedFieldId);
     if (field) {
@@ -150,22 +143,17 @@ export default function BookingCalendar({
     }
   }, [selectedFieldId, fields]);
 
-  // Get day of week for selected date (0 = Sunday, 1 = Monday, etc.)
   const selectedDayOfWeek = new Date(selectedDate + 'T00:00:00').getDay();
 
-  // Filter bookings for selected date and field
   const filteredBookings = bookings.filter(
     b => b.date === selectedDate && b.fieldId === selectedFieldId
   );
 
-  // Filter mensalistas for selected day of week and field, respecting recurrence
   const activeMensalistas = mensalistas.filter(m => {
     if (!m.active || m.fieldId !== selectedFieldId || Number(m.dayOfWeek) !== selectedDayOfWeek) {
       return false;
     }
-
     const recType = m.recurrence?.split('_due_')[0] || m.recurrence;
-
     if (recType === 'biweekly') {
       const dateObj = new Date(selectedDate + 'T00:00:00');
       const oneJan = new Date(dateObj.getFullYear(), 0, 1);
@@ -173,21 +161,17 @@ export default function BookingCalendar({
       const weekNumber = Math.ceil((dateObj.getDay() + 1 + numberOfDays) / 7);
       return weekNumber % 2 === 0;
     }
-
     if (recType === 'monthly_3x') {
       const dayOfMonth = new Date(selectedDate + 'T00:00:00').getDate();
       return dayOfMonth <= 21;
     }
-
     return true;
   });
 
-  // Filter events for selected date and field
   const activeEventos = eventos.filter(
     e => e.date === selectedDate && e.fieldId === selectedFieldId
   );
 
-  // Filter blocks for selected date and field
   const activeBlocks = blockedSlots.filter(b => {
     if (b.fieldId !== selectedFieldId) return false;
     if (b.type === 'single' && b.date === selectedDate) return true;
@@ -216,14 +200,11 @@ export default function BookingCalendar({
     }
   };
 
-  // Dynamic Timeline Generation Algorithm based on Arena Settings
   const generateTimeline = () => {
     const openTime = settings?.openTime || "08:00";
     let closeTime = settings?.closeTime || "00:00";
-    
     const dayStart = parseTimeToMinutes(openTime);
     let dayEnd = parseTimeToMinutes(closeTime);
-    
     if (dayEnd === 0 || closeTime === "00:00") {
       dayEnd = 24 * 60;
     }
@@ -242,13 +223,7 @@ export default function BookingCalendar({
         let startMin = parseTimeToMinutes(startStr);
         let endMin = parseTimeToMinutes(endStr);
         if (endMin === 0) endMin = 24 * 60;
-        busyIntervals.push({
-          start: startMin,
-          end: endMin,
-          type: 'booking',
-          label: b.customerName,
-          data: b
-        });
+        busyIntervals.push({ start: startMin, end: endMin, type: 'booking', label: b.customerName, data: b });
       } catch (e) {}
     });
 
@@ -258,13 +233,7 @@ export default function BookingCalendar({
         let startMin = parseTimeToMinutes(startStr);
         let endMin = parseTimeToMinutes(endStr);
         if (endMin === 0) endMin = 24 * 60;
-        busyIntervals.push({
-          start: startMin,
-          end: endMin,
-          type: 'mensalista',
-          label: m.customerName,
-          data: m
-        });
+        busyIntervals.push({ start: startMin, end: endMin, type: 'mensalista', label: m.customerName, data: m });
       } catch (e) {}
     });
 
@@ -273,13 +242,7 @@ export default function BookingCalendar({
         let startMin = parseTimeToMinutes(ev.startTime);
         let endMin = parseTimeToMinutes(ev.endTime);
         if (endMin === 0) endMin = 24 * 60;
-        busyIntervals.push({
-          start: startMin,
-          end: endMin,
-          type: 'event',
-          label: ev.title,
-          data: ev
-        });
+        busyIntervals.push({ start: startMin, end: endMin, type: 'event', label: ev.title, data: ev });
       } catch (e) {}
     });
 
@@ -289,13 +252,7 @@ export default function BookingCalendar({
         let startMin = parseTimeToMinutes(startStr);
         let endMin = parseTimeToMinutes(endStr);
         if (endMin === 0) endMin = 24 * 60;
-        busyIntervals.push({
-          start: startMin,
-          end: endMin,
-          type: 'block',
-          label: 'Bloqueado',
-          data: block
-        });
+        busyIntervals.push({ start: startMin, end: endMin, type: 'block', label: 'Bloqueado', data: block });
       } catch (e) {}
     });
 
@@ -316,19 +273,13 @@ export default function BookingCalendar({
       if (interval.start > current) {
         let gapStart = current;
         const gapEnd = interval.start;
-
         while (gapStart < gapEnd) {
           const nextHour = gapStart + 60;
           const slotEnd = Math.min(nextHour, gapEnd);
-          timeline.push({
-            start: gapStart,
-            end: slotEnd,
-            isBusy: false
-          });
+          timeline.push({ start: gapStart, end: slotEnd, isBusy: false });
           gapStart = slotEnd;
         }
       }
-
       timeline.push({
         start: interval.start,
         end: interval.end,
@@ -337,7 +288,6 @@ export default function BookingCalendar({
         label: interval.label,
         data: interval.data
       });
-
       current = Math.max(current, interval.end);
     });
 
@@ -346,11 +296,7 @@ export default function BookingCalendar({
       while (gapStart < dayEnd) {
         const nextHour = gapStart + 60;
         const slotEnd = Math.min(nextHour, dayEnd);
-        timeline.push({
-          start: gapStart,
-          end: slotEnd,
-          isBusy: false
-        });
+        timeline.push({ start: gapStart, end: slotEnd, isBusy: false });
         gapStart = slotEnd;
       }
     }
@@ -411,7 +357,6 @@ export default function BookingCalendar({
       showSuccess("Diarista agendado com sucesso!");
     }
     
-    // Reset form
     setCustomerName("");
     setCustomerPhone("");
     setIsNewBookingOpen(false);
@@ -454,16 +399,15 @@ export default function BookingCalendar({
 
           <div className="flex flex-col w-full sm:w-auto">
             <span className="text-xs font-semibold text-slate-400 mb-1">Quadra</span>
-            <Select value={selectedFieldId} onValueChange={handleFieldChange}>
-              <SelectTrigger className="w-full sm:w-48 rounded-xl border-slate-800 bg-slate-950 text-white">
-                <SelectValue placeholder="Selecione a quadra" />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-950 border-slate-800 text-white">
-                {fields.map(f => (
-                  <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <select
+              value={selectedFieldId}
+              onChange={(e) => handleFieldChange(e.target.value)}
+              className="w-full sm:w-48 rounded-xl border border-slate-800 bg-slate-950 text-white p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {fields.map(f => (
+                <option key={f.id} value={f.id} className="bg-slate-950 text-white">{f.name}</option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -675,15 +619,14 @@ export default function BookingCalendar({
 
               <div className="space-y-1">
                 <Label className="text-slate-300 font-semibold">Tipo de Bloqueio</Label>
-                <Select value={blockType} onValueChange={(v: any) => setBlockType(v)}>
-                  <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-950 border-slate-800 text-white">
-                    <SelectItem value="single">Apenas nesta data específica</SelectItem>
-                    <SelectItem value="monthly">Bloqueio Mensal / Anual (Recorrente)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <select
+                  value={blockType}
+                  onChange={(e) => setBlockType(e.target.value as any)}
+                  className="w-full rounded-xl border border-slate-800 bg-slate-950 text-white p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="single" className="bg-slate-950 text-white">Apenas nesta data específica</option>
+                  <option value="monthly" className="bg-slate-950 text-white">Bloqueio Mensal / Anual (Recorrente)</option>
+                </select>
               </div>
 
               <div className="pt-4 flex gap-3">
@@ -762,18 +705,17 @@ export default function BookingCalendar({
                   <Users size={16} className="text-blue-400" />
                   Selecionar Cliente Cadastrado
                 </Label>
-                <Select onValueChange={handleSelectExistingCustomer}>
-                  <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
-                    <SelectValue placeholder="Escolha um cliente existente (opcional)" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-950 border-slate-800 text-white">
-                    {derivedCustomers.map(c => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name} ({c.phone})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <select
+                  onChange={(e) => handleSelectExistingCustomer(e.target.value)}
+                  className="w-full rounded-xl border border-slate-800 bg-slate-950 text-white p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="" className="bg-slate-950 text-white">Escolha um cliente existente (opcional)</option>
+                  {derivedCustomers.map(c => (
+                    <option key={c.id} value={c.id} className="bg-slate-950 text-white">
+                      {c.name} ({c.phone})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="border-t border-slate-800 my-2 pt-2" />
@@ -804,32 +746,30 @@ export default function BookingCalendar({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <Label className="text-slate-300 font-semibold">Esporte</Label>
-                  <Select value={selectedSport} onValueChange={setSelectedSport}>
-                    <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-950 border-slate-800 text-white">
-                      <SelectItem value="Futebol">Futebol ⚽</SelectItem>
-                      <SelectItem value="Tênis">Tênis 🎾</SelectItem>
-                      <SelectItem value="Beach Tennis">Beach Tennis 🏖️</SelectItem>
-                      <SelectItem value="Vôlei">Vôlei 🏐</SelectItem>
-                      <SelectItem value="Futevôlei">Futevôlei ⚽🏖️</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <select
+                    value={selectedSport}
+                    onChange={(e) => setSelectedSport(e.target.value)}
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950 text-white p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Futebol" className="bg-slate-950 text-white">Futebol ⚽</option>
+                    <option value="Tênis" className="bg-slate-950 text-white">Tênis 🎾</option>
+                    <option value="Beach Tennis" className="bg-slate-950 text-white">Beach Tennis 🏖️</option>
+                    <option value="Vôlei" className="bg-slate-950 text-white">Vôlei 🏐</option>
+                    <option value="Futevôlei" className="bg-slate-950 text-white">Futevôlei ⚽🏖️</option>
+                  </select>
                 </div>
 
                 <div className="space-y-1">
                   <Label className="text-slate-300 font-semibold">Quadra</Label>
-                  <Select value={selectedFieldId} onValueChange={handleFieldChange}>
-                    <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-950 border-slate-800 text-white">
-                      {fields.map(f => (
-                        <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <select
+                    value={selectedFieldId}
+                    onChange={(e) => handleFieldChange(e.target.value)}
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950 text-white p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {fields.map(f => (
+                      <option key={f.id} value={f.id} className="bg-slate-950 text-white">{f.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -893,18 +833,17 @@ export default function BookingCalendar({
 
                 <div className="space-y-1">
                   <Label className="text-slate-300 font-semibold">Forma de Pagamento</Label>
-                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                    <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-950 border-slate-800 text-white">
-                      <SelectItem value="Pix">Pix 📱</SelectItem>
-                      <SelectItem value="Dinheiro">Dinheiro 💵</SelectItem>
-                      <SelectItem value="Cartão de Crédito">Cartão de Crédito 💳</SelectItem>
-                      <SelectItem value="Cartão de Débito">Cartão de Débito 💳</SelectItem>
-                      <SelectItem value="Dividido">Dividido 🤝</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950 text-white p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Pix" className="bg-slate-950 text-white">Pix 📱</option>
+                    <option value="Dinheiro" className="bg-slate-950 text-white">Dinheiro 💵</option>
+                    <option value="Cartão de Crédito" className="bg-slate-950 text-white">Cartão de Crédito 💳</option>
+                    <option value="Cartão de Débito" className="bg-slate-950 text-white">Cartão de Débito 💳</option>
+                    <option value="Dividido" className="bg-slate-950 text-white">Dividido 🤝</option>
+                  </select>
                 </div>
               </div>
 
@@ -918,17 +857,16 @@ export default function BookingCalendar({
               {bookingType === 'mensalista' && (
                 <div className="space-y-1">
                   <Label className="text-slate-300 font-semibold">Recorrência</Label>
-                  <Select value={recurrence} onValueChange={setRecurrence}>
-                    <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-950 border-slate-800 text-white">
-                      <SelectItem value="weekly">Toda semana</SelectItem>
-                      <SelectItem value="biweekly">De 15 em 15 dias</SelectItem>
-                      <SelectItem value="monthly_3x">3 vezes no mês</SelectItem>
-                      <SelectItem value="custom">Personalizado</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <select
+                    value={recurrence}
+                    onChange={(e) => setRecurrence(e.target.value)}
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950 text-white p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="weekly" className="bg-slate-950 text-white">Toda semana</option>
+                    <option value="biweekly" className="bg-slate-950 text-white">De 15 em 15 dias</option>
+                    <option value="monthly_3x" className="bg-slate-950 text-white">3 vezes no mês</option>
+                    <option value="custom" className="bg-slate-950 text-white">Personalizado</option>
+                  </select>
                 </div>
               )}
 

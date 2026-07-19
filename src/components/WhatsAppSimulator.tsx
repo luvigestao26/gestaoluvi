@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { MessageSquare, Send, X, CheckCheck, ExternalLink } from 'lucide-react';
+import { MessageSquare, X, CheckCheck, ExternalLink } from 'lucide-react';
 
 interface WhatsAppSimulatorProps {
   message: string | null;
@@ -30,7 +30,7 @@ export default function WhatsAppSimulator({ message, phone, onClose }: WhatsAppS
   const whatsappUrl = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodeURIComponent(message)}`;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full bg-white rounded-2xl shadow-2xl border border-emerald-100 overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
+    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:bottom-6 md:max-w-sm z-50 bg-white rounded-2xl shadow-2xl border border-emerald-100 overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
       {/* Header */}
       <div className="bg-emerald-600 p-4 text-white flex items-center justify-between">
         <div className="flex items-center gap-2.5">

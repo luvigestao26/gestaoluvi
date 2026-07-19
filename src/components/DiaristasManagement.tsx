@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { showSuccess, showError } from "@/utils/toast";
 import { getBrasiliaDate } from "@/utils/date";
 import SplitPaymentInput from "./SplitPaymentInput";
@@ -198,7 +197,7 @@ export default function DiaristasManagement({
                 <span>{booking.timeSlot}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center rounded-full bg-blue-950 text-blue-400 border border-blue-900 px-2 py-0.5 text-xs font-medium">
+                <span className="inline-flex items-center rounded-full bg-blue-950 text-blue-400 border border-blue-900 px-2.5 py-0.5 text-xs font-medium">
                   {booking.sport}
                 </span>
                 <span className="text-xs text-slate-400">{booking.fieldName}</span>
@@ -259,18 +258,17 @@ export default function DiaristasManagement({
                   <Users size={16} className="text-blue-400" />
                   Selecionar Cliente Cadastrado
                 </Label>
-                <Select onValueChange={handleSelectExistingCustomer}>
-                  <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
-                    <SelectValue placeholder="Escolha um cliente existente (opcional)" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-950 border-slate-800 text-white">
-                    {derivedCustomers.map(c => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name} ({c.phone})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <select
+                  onChange={(e) => handleSelectExistingCustomer(e.target.value)}
+                  className="w-full rounded-xl border border-slate-800 bg-slate-950 text-white p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="" className="bg-slate-950 text-white">Escolha um cliente existente (opcional)</option>
+                  {derivedCustomers.map(c => (
+                    <option key={c.id} value={c.id} className="bg-slate-950 text-white">
+                      {c.name} ({c.phone})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="border-t border-slate-800 my-2 pt-2" />
@@ -301,32 +299,30 @@ export default function DiaristasManagement({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <Label className="text-slate-300 font-semibold">Esporte</Label>
-                  <Select value={selectedSport} onValueChange={setSelectedSport}>
-                    <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-950 border-slate-800 text-white">
-                      <SelectItem value="Futebol">Futebol ⚽</SelectItem>
-                      <SelectItem value="Tênis">Tênis 🎾</SelectItem>
-                      <SelectItem value="Beach Tennis">Beach Tennis 🏖️</SelectItem>
-                      <SelectItem value="Vôlei">Vôlei 🏐</SelectItem>
-                      <SelectItem value="Futevôlei">Futevôlei ⚽🏖️</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <select
+                    value={selectedSport}
+                    onChange={(e) => setSelectedSport(e.target.value)}
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950 text-white p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Futebol" className="bg-slate-950 text-white">Futebol ⚽</option>
+                    <option value="Tênis" className="bg-slate-950 text-white">Tênis 🎾</option>
+                    <option value="Beach Tennis" className="bg-slate-950 text-white">Beach Tennis 🏖️</option>
+                    <option value="Vôlei" className="bg-slate-950 text-white">Vôlei 🏐</option>
+                    <option value="Futevôlei" className="bg-slate-950 text-white">Futevôlei ⚽🏖️</option>
+                  </select>
                 </div>
 
                 <div className="space-y-1">
                   <Label className="text-slate-300 font-semibold">Quadra</Label>
-                  <Select value={selectedFieldId} onValueChange={handleFieldChange}>
-                    <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-950 border-slate-800 text-white">
-                      {fields.map(f => (
-                        <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <select
+                    value={selectedFieldId}
+                    onChange={(e) => handleFieldChange(e.target.value)}
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950 text-white p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {fields.map(f => (
+                      <option key={f.id} value={f.id} className="bg-slate-950 text-white">{f.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -385,18 +381,17 @@ export default function DiaristasManagement({
 
                 <div className="space-y-1">
                   <Label className="text-slate-300 font-semibold">Forma de Pagamento</Label>
-                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                    <SelectTrigger className="rounded-xl border-slate-800 bg-slate-950 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-950 border-slate-800 text-white">
-                      <SelectItem value="Pix">Pix 📱</SelectItem>
-                      <SelectItem value="Dinheiro">Dinheiro 💵</SelectItem>
-                      <SelectItem value="Cartão de Crédito">Cartão de Crédito 💳</SelectItem>
-                      <SelectItem value="Cartão de Débito">Cartão de Débito 💳</SelectItem>
-                      <SelectItem value="Dividido">Dividido 🤝</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950 text-white p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Pix" className="bg-slate-950 text-white">Pix 📱</option>
+                    <option value="Dinheiro" className="bg-slate-950 text-white">Dinheiro 💵</option>
+                    <option value="Cartão de Crédito" className="bg-slate-950 text-white">Cartão de Crédito 💳</option>
+                    <option value="Cartão de Débito" className="bg-slate-950 text-white">Cartão de Débito 💳</option>
+                    <option value="Dividido" className="bg-slate-950 text-white">Dividido 🤝</option>
+                  </select>
                 </div>
               </div>
 
